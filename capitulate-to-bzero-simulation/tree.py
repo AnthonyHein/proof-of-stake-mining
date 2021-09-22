@@ -14,6 +14,21 @@ class Tree:
 
         self.genesis: Block = Block(Miner.GENESIS, 0)
         self.blocks: List[Block] = [self.genesis]
+        self.longest_chain: Block = self.genesis
+
+    def _get_longest_chain(self) -> Block:
+        """
+        Get the longest chain among the blocks in this tree.
+        """
+        height_of_longest_chain = max([block.height for block in self.blocks])
+
+        longest_chain: Block = None
+        for block in self.blocks:
+            if block.height == height_of_longest_chain:
+                if longest_chain is None or block.created_at < longest_chain.created_at:
+                    longest_chain = block
+
+        return longest_chain
 
     def publish_set(self, miner: Miner, blocks: List[Block], edges: dict[Block, Block]) -> 'Tree':
         """
@@ -61,6 +76,8 @@ class Tree:
         for block in blocks:
             self.blocks.append(block.publish(edges[block]))
 
+        self.longest_chain = self._get_longest_chain()
+
         return self
 
     def publish_path(self, miner: Miner, blocks: List[Block], anchor: Block) -> 'Tree':
@@ -97,7 +114,9 @@ class Tree:
         blocks = sort_blocks(blocks, reverse=False)
 
         for i, block in enumerate(blocks):
-            self.blocks.append(blocks[i].publish(anchor if i == 0 else blocks[i-1]))   
+            self.blocks.append(blocks[i].publish(anchor if i == 0 else blocks[i-1]))
+
+        self.longest_chain = self._get_longest_chain()
 
         return self
     
@@ -142,7 +161,9 @@ class Tree:
         blocks = sort_blocks(blocks, reverse=False)[:num_blocks]
 
         for i, block in enumerate(blocks):
-            self.blocks.append(blocks[i].publish(anchor if i == 0 else blocks[i-1]))   
+            self.blocks.append(blocks[i].publish(anchor if i == 0 else blocks[i-1]))
+            
+        self.longest_chain = self._get_longest_chain()
 
         return self
 
