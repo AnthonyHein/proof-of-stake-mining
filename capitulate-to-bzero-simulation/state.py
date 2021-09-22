@@ -52,6 +52,7 @@ class State:
                 if block.created_at > genesis_prev_created_at
             ],
         }
+        
         self.rounds_mined_on = {
             Miner.ATTACKER: [
                 created_at - genesis_prev_created_at
