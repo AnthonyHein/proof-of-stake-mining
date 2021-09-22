@@ -1,8 +1,8 @@
 from typing import List
 
 from block import Block
-from miner import Miner
 from block_utils import *
+from miner import Miner
 
 
 class Tree:
@@ -29,6 +29,38 @@ class Tree:
                     longest_chain = block
 
         return longest_chain
+
+    def capitulate(self, genesis: Block) -> 'Tree':
+        """
+        Modify the tree so that the block `genesis` is effectively the genesis block.
+        """
+
+        if not isinstance(genesis, Block):
+            raise TypeError("Tree.capitulate: `genesis` must be of type `Block`")
+        if genesis not in self.blocks:
+            raise ValueError("Tree.capiulate: `genesis` must be an existing block in the tree")
+
+        blocks = [
+            block
+            for block
+            in self.blocks
+            if block.created_at >= genesis.created_at and \
+               (not block.is_published or genesis in block.ancestors())
+        ]
+
+        genesis_prev_height = genesis.height
+        genesis_prev_created_at = genesis.created_at
+
+        for block in blocks:
+            if block == genesis:
+                block = relabel_block(block, genesis_prev_height, genesis_prev_created_at, True)
+            else:
+                block = relabel_block(block, genesis_prev_height, genesis_prev_created_at, False)
+
+        self.blocks = blocks
+        self.longest_chain = self._get_longest_chain()
+
+        return self
 
     def publish_set(self, miner: Miner, blocks: List[Block], edges: dict[Block, Block]) -> 'Tree':
         """
@@ -316,3 +348,62 @@ if __name__ == "__main__":
             anchor=blocks[0]
         )
     )
+    print()
+
+
+    print("-------------------------------------------------------")
+    print("`capitulate`")
+    print("-------------------------------------------------------")
+
+    tree = Tree()
+
+    print()
+    print(tree)
+    print()
+
+    blocks = [
+        tree.genesis,
+        Block(Miner.ATTACKER, 1),
+        Block(Miner.HONEST, 2),
+        Block(Miner.ATTACKER, 3),
+        Block(Miner.HONEST, 4),
+    ]
+
+
+    print()
+    print(
+        tree.publish_set(
+            miner=Miner.HONEST,
+            blocks=[blocks[2]],
+            edges={blocks[2]: blocks[0]}
+        )
+    )
+    print()
+
+    print()
+    print(
+        tree.publish_set(
+            miner=Miner.ATTACKER,
+            blocks=[blocks[1], blocks[3]],
+            edges={blocks[1]: blocks[0], blocks[3]: blocks[1]}
+        )
+    )
+    print()
+
+    print()
+    print(
+        tree.publish_set(
+            miner=Miner.HONEST,
+            blocks=[blocks[4]],
+            edges={blocks[4]: blocks[3]}
+        )
+    )
+    print()
+
+    print()
+    print("~~ capitulate by relabeling 3 to 0 (and 4 to 1) ~~")
+    print()
+
+    print()
+    print(tree.capitulate(blocks[3]))
+    print()
