@@ -3,7 +3,7 @@ from typing import List
 from block import Block
 from miner import Miner
 
-def sort_blocks(blocks: List[Block], reverse: bool = True) -> List[Block]:
+def sort_blocks(blocks: List[Block], reverse: bool) -> List[Block]:
     """
     Given a list of blocks `blocks`, return them in sorted order by their
     `created_at` timestamp; the order is reversed if `reverse` is true.

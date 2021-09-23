@@ -213,14 +213,13 @@ class Tree:
                 if longest_chain is None or block.created_at < longest_chain.created_at:
                     longest_chain = block
 
-        longest_path: List[Block] = sort_blocks(longest_chain.ancestors())
+        longest_path: List[Block] = sort_blocks(longest_chain.ancestors(), reverse=True)
 
         s += "Longest path: "
         s += str(longest_path)
         s += "\n"
 
-        forks = sort_blocks(
-            [block for block in self.blocks if block not in longest_path])
+        forks = sort_blocks([block for block in self.blocks if block not in longest_path], reverse=True)
 
         s += "Blocks not in the longest path: "
         s += str(forks)
