@@ -28,12 +28,12 @@ class SM(Strategy):
 
         unpublished_blocks = state.unpublished_blocks[self.miner]
 
-        if len(unpublished_blocks) == len(state.tree.longest_chain.ancestors()):
+        if len(unpublished_blocks) != 1 and len(unpublished_blocks) == len(state.tree.longest_chain.ancestors()):
             return (
                 Action.PUBLISH, (self.miner,
                                  unpublished_blocks,
                                  len(unpublished_blocks),
-                                 state.tree.longest_chain.ancestors[len(unpublished_blocks) - 1])
+                                 state.tree.longest_chain.ancestors()[len(unpublished_blocks) - 1])
             )
         else:
             return (Action.WAIT, None)

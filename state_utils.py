@@ -6,6 +6,8 @@ import sympy as sp
 from miner import Miner
 from state import State
 
+# FIXME: sympy is way to slow for our purposes... need to ditch this
+
 def miner_k_reward(miner: Miner, start: State, end: State) -> int:
     """
     Given a `start` state and an `end` state, calculate the integer-valued reward of
@@ -84,4 +86,9 @@ def mining_game_reward_val(start: State, end: State) -> float:
         raise TypeError("state_utils.mining_game_reward_val: `end` must be of type `State`")
 
     rev = sp.symbols('rev')
-    return sp.solve(mining_game_reward_expr(start, end), rev)
+    sol = sp.solve(mining_game_reward_expr(start, end), rev)
+
+    if sol != None and len(sol) > 0:
+        return sol[0].evalf()
+    else:
+        return 0

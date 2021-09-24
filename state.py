@@ -59,13 +59,13 @@ class State:
                 created_at - genesis_prev_created_at
                 for created_at
                 in self.rounds_mined_on[Miner.ATTACKER]
-                if created_at >= genesis_prev_created_at
+                if created_at > genesis_prev_created_at
             ],
             Miner.HONEST: [
                 created_at - genesis_prev_created_at
                 for created_at
                 in self.rounds_mined_on[Miner.HONEST]
-                if created_at >= genesis_prev_created_at
+                if created_at > genesis_prev_created_at
             ],
         }
 
@@ -92,7 +92,7 @@ class State:
         Execute `Action.WAIT` on the current state and return the result.
         i.e., do nothing and return `self`.
         """
-        if not isinstance(args, None):
+        if args != None:
             raise TypeError("State._wait: `args` must be `None` (to confirm intention)")
         
         return self
