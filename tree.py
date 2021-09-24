@@ -203,7 +203,12 @@ class Tree:
         """
         Return a string representing the current tree.
         """
-        s: str = ""
+        s = ""
+
+        s += "````````````````````````````````````````````````````````````\n"
+        s += "` TREE START                                               `\n"
+        s += "`                                                          `\n"
+        s += "`                                                          `\n"
 
         height_of_longest_chain = max([block.height for block in self.blocks])
 
@@ -215,14 +220,20 @@ class Tree:
 
         longest_path: List[Block] = sort_blocks(longest_chain.ancestors(), reverse=True)
 
-        s += "Longest path: "
-        s += str(longest_path)
-        s += "\n"
+        s += "` Longest path:                                            `\n"
+        s += "`                                                          `\n"
+        s +=f"` {str(longest_path): <57}`\n"
+        s += "`                                                          `\n"
 
         forks = sort_blocks([block for block in self.blocks if block not in longest_path], reverse=True)
 
-        s += "Blocks not in the longest path: "
-        s += str(forks)
+        s += "` Blocks not in the longest path:                          `\n"
+        s += "`                                                          `\n"
+        s +=f"` {str(forks): <57}`\n"
+        s += "`                                                          `\n"
+        s += "`                                                          `\n"
+        s += "` TREE END                                                 `\n"
+        s += "````````````````````````````````````````````````````````````\n"
 
         return s
 

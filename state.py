@@ -73,9 +73,9 @@ class State:
     
     def mine_block(self, block: Block) -> 'State':
         """
-        Modify the state to include the newly mined block `block` return the result.
+        Modify the state to include the newly mined block `block` and return the result.
         """
-        if not isinstance(block, Block):
+        if not isinstance(block, Block): 
             raise TypeError("State.mine_block: `block` must be of type `Block`")
         if block in self.tree.blocks or \
            block in self.unpublished_blocks[Miner.ATTACKER] or \
@@ -188,10 +188,10 @@ class State:
 
     def take_action(
         self,
-        action_w_args: Union[Tuple[Action.WAIT, None],
-                             Tuple[Action.PUBLISH_SET, Tuple[Miner, List[Block], dict[Block, Block]]],
-                             Tuple[Action.PUBLISH_PATH, Tuple[Miner, List[Block], Block]],
-                             Tuple[Action.PUBLISH, Tuple[Miner, List[Block], int, Block]]]
+        action_w_args: Union[Tuple[Action, None],
+                             Tuple[Action, Tuple[Miner, List[Block], dict[Block, Block]]],
+                             Tuple[Action, Tuple[Miner, List[Block], Block]],
+                             Tuple[Action, Tuple[Miner, List[Block], int, Block]]]
     ) -> 'State':
         """
         Execute the action at `action_w_args[0]` with arguments specified by the
@@ -214,10 +214,41 @@ class State:
         }
  
         return ACTION_TO_HELPER[action](args)
+
+    def __repr__(self) -> str:
+        """
+        Return a string representing the current state.
+        """
+
+        s = ""
+
+        s += "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
+        s += "~ STATE START                                              ~\n"
+        s += "~                                                          ~\n"
+        s += "~                                                          ~\n"
+        s += "~ Tree                                                     ~\n"
+        s += "~                                                          ~\n"
+        s += str(self.tree)
+        s += "~                                                          ~\n"
+        s += "~ Unpublished blocks:                                      ~\n"
+        s += "~                                                          ~\n"
+        s +=f"~ Attacker: {str(self.unpublished_blocks[Miner.ATTACKER]): <47}~\n"
+        s +=f"~ Honest: {str(self.unpublished_blocks[Miner.HONEST]): <49}~\n"
+        s += "~                                                          ~\n"
+        s += "~ Rounds mined on:                                         ~\n"
+        s += "~                                                          ~\n"
+        s +=f"~ Attacker: {str(self.rounds_mined_on[Miner.ATTACKER]): <47}~\n"
+        s +=f"~ Honest: {str(self.rounds_mined_on[Miner.HONEST]): <49}~\n"
+        s += "~                                                          ~\n"
+        s += "~                                                          ~\n"
+        s += "~ STATE END                                                ~\n"
+        s += "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
+
+        return s
         
 
 if __name__ == "__main__":
 
     state = State()
 
-    # TODO
+    

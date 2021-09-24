@@ -16,8 +16,8 @@ class Frontier(Strategy):
 
     def get_action(
         self, state: State
-    ) -> Union[Tuple[Action.WAIT, None],
-               Tuple[Action.PUBLISH, Tuple[Miner, List[Block], int, Block]]]:
+    ) -> Union[Tuple[Action, None],
+               Tuple[Action, Tuple[Miner, List[Block], int, Block]]]:
         """"
         Publish all unpublished blocks on top of the longest chain, or wait if
         no such blocks exist.
@@ -37,11 +37,18 @@ class Frontier(Strategy):
         else:
             return (Action.WAIT, None)
 
-    def get_capitulation(self, state: State) -> Block:
+    def get_capitulation(self, state: State) -> Tuple[Block, bool]:
         """
         Always capitulate to the current longest chain.
         """
         if not isinstance(state, State):
             raise TypeError("Frontier.get_capitulation: `state` must be of type `State`")
 
-        return state.tree.longest_chain()
+        return state.tree.longest_chain(), True
+
+    def __repr__(self) -> str:
+        """
+        Return the name of this strategy.
+        """
+
+        return "<FRONTIER STRATEGY>"

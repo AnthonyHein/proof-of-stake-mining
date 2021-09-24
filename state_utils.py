@@ -34,11 +34,11 @@ def miner_k_reward(miner: Miner, start: State, end: State) -> int:
 
     return longest_chain_blocks_end - longest_chain_blocks_start
 
-def mining_game_reward(start: State, end: State, rev: float) -> float:
+def mining_game_reward_fixed_rev(start: State, end: State, rev: float) -> float:
     """
     Given a `start` state and an `end` state, calculate the real-valued mining
-    game reward as the weighted sum of miner `Miner.ATTACKER` and miner
-    `Miner.HONEST` with weights (1 - `rev`) and (-`rev`) respectively.
+    game reward as the weighted sum of miner `Miner.ATTACKER` reward and miner
+    `Miner.HONEST` reward with weights (1 - `rev`) and (-`rev`) respectively.
     """
 
     if not isinstance(start, State):
@@ -55,17 +55,33 @@ def mining_game_reward(start: State, end: State, rev: float) -> float:
 def mining_game_reward_expr(start: State, end: State) -> sp.core.add.Add:
     """
     Given a `start` state and an `end` state, calculate the real-valued mining
-    game reward as the weighted sum of miner `Miner.ATTACKER` and miner
-    `Miner.HONEST` with weights (1 - rev) and (-rev) respectively where `rev`
-    is a symbolic symbol in SymPy. This allows for evaluating `rev` when the
-    run finally capitulates.
+    game reward as the weighted sum of miner `Miner.ATTACKER` reward and miner
+    `Miner.HONEST` reward with weights (1 - rev) and (-rev) respectively where
+    `rev` is a symbolic symbol in SymPy. This allows for evaluating `rev` when
+    the run finally capitulates.
     """
 
     if not isinstance(start, State):
-        raise TypeError("state_utils.mining_game_reward: `start` must be of type `State`")
+        raise TypeError("state_utils.mining_game_reward_expr: `start` must be of type `State`")
     if not isinstance(start, State):
-        raise TypeError("state_utils.mining_game_reward: `end` must be of type `State`")
+        raise TypeError("state_utils.mining_game_reward_expr: `end` must be of type `State`")
 
-    rev = sp.symbols('l')
+    rev = sp.symbols('rev')
     return (1 - rev) * miner_k_reward(Miner.ATTACKER, start, end) - \
            rev * miner_k_reward(Miner.HONEST, start, end)
+
+def mining_game_reward_val(start: State, end: State) -> float:
+    """
+    Given a `start` state and an `end` state, calculate the real-valued mining
+    game reward as value of `rev` that makes the following equation true:
+        (1 - rev)(Miner.ATTACKER reward) + (- rev)(Miner.HONEST reward) = 0
+    """
+
+    
+    if not isinstance(start, State):
+        raise TypeError("state_utils.mining_game_reward_val: `start` must be of type `State`")
+    if not isinstance(start, State):
+        raise TypeError("state_utils.mining_game_reward_val: `end` must be of type `State`")
+
+    rev = sp.symbols('rev')
+    return sp.solve(mining_game_reward_expr(start, end), rev)

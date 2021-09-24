@@ -16,10 +16,10 @@ class Strategy:
 
     def get_action(
         self, state: State
-    ) -> Union[Tuple[Action.WAIT, None],
-               Tuple[Action.PUBLISH_SET, Tuple[Miner, List[Block], dict[Block, Block]]],
-               Tuple[Action.PUBLISH_PATH, Tuple[Miner, List[Block], Block]],
-               Tuple[Action.PUBLISH, Tuple[Miner, List[Block], int, Block]]]:
+    ) -> Union[Tuple[Action, None],
+               Tuple[Action, Tuple[Miner, List[Block], dict[Block, Block]]],
+               Tuple[Action, Tuple[Miner, List[Block], Block]],
+               Tuple[Action, Tuple[Miner, List[Block], int, Block]]]:
         """"
         Get the action that this strategy will take given the state `state`.
         This returns a tuple of an `Action` and a tuple with all the arguments
@@ -27,10 +27,11 @@ class Strategy:
         """
         pass
 
-    def get_capitulation(self, state: State) -> Block:
+    def get_capitulation(self, state: State) -> Tuple[Block, bool]:
         """
         Get the capitulation that this strategy will perform given the state 
-        `state`. A capitulation is fully described by the block that this
-        strategy will now view as the genesis block.
+        `state`. A capitulation is described by the block that this strategy
+        will now view as the genesis block and a boolean flag whether this
+        capitulation implies the game is over.
         """
         pass

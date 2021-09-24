@@ -16,8 +16,8 @@ class SM(Strategy):
 
     def get_action(
         self, state: State
-    ) -> Union[Tuple[Action.WAIT, None],
-               Tuple[Action.PUBLISH, Tuple[Miner, List[Block], int, Block]]]:
+    ) -> Union[Tuple[Action, None],
+               Tuple[Action, Tuple[Miner, List[Block], int, Block]]]:
         """"
         Publish on top of the longest chain when you have hidden a block that
         can reach a height of exactly one greater than the public longest chain.
@@ -39,7 +39,7 @@ class SM(Strategy):
             return (Action.WAIT, None)
 
     
-    def get_capitulation(self, state: State) -> Block:
+    def get_capitulation(self, state: State) -> Tuple[Block, bool]:
         """
         Capitulate the the longest chain if there are no unpublished blocks or
         the private chain is trailing by one or more blocks.
@@ -50,8 +50,15 @@ class SM(Strategy):
         unpublished_blocks = state.unpublished_blocks[self.miner]
 
         if len(unpublished_blocks) == 0:
-            return state.tree.longest_chain
+            return state.tree.longest_chain, True
         elif len(unpublished_blocks) <= len(state.tree.longest_chain.ancestors()) - 1:
-            return state.tree.longest_chain
+            return state.tree.longest_chain, True
         else:
-            return state.tree.genesis
+            return state.tree.genesis, False
+
+    def __repr__(self) -> str:
+        """
+        Return the name of this strategy.
+        """
+
+        return "<SELFISH MINING STRATEGY>"
