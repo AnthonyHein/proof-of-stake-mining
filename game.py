@@ -57,6 +57,12 @@ class Game:
         # flag whether this game is completed
         self.is_completed: bool = False
 
+    def _get_prev_cap_rewards(self, capitulation) -> dict[Miner, int]:
+        return {
+                Miner.ATTACKER: self.prev_cap_rewards[Miner.ATTACKER] + miner_k_reward_according_to_block(Miner.ATTACKER, capitulation),
+                Miner.HONEST: self.prev_cap_rewards[Miner.HONEST] + miner_k_reward_according_to_block(Miner.HONEST, capitulation),
+        }
+
     def _get_rewards(self) -> dict[Miner, int]:
         return {
             Miner.ATTACKER: self.prev_cap_rewards[Miner.ATTACKER] + miner_k_reward(Miner.ATTACKER, EMPTY_STATE, self.state),
@@ -111,10 +117,7 @@ class Game:
 
         # only capitulate if this is not a capitulation which ends the game (bc we want to observe final state)
         if capitulation is not None and not is_completed:
-            self.prev_cap_rewards = {
-                Miner.ATTACKER: miner_k_reward_according_to_block(Miner.ATTACKER, capitulation),
-                Miner.HONEST: miner_k_reward_according_to_block(Miner.HONEST, capitulation),
-            }
+            self.prev_cap_rewards = self._get_prev_cap_rewards(capitulation)
             self.state = self.state.capitulate(capitulation)
 
         # capitulation of a `Game` object only entails setting `self.timestep` correctly
@@ -158,6 +161,10 @@ class Game:
         """
         self.state = State()
         self.rewards = {
+            Miner.ATTACKER: 0,
+            Miner.HONEST: 0,
+        }
+        self.prev_cap_rewards = {
             Miner.ATTACKER: 0,
             Miner.HONEST: 0,
         }

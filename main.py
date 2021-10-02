@@ -9,17 +9,50 @@ from strategy import Strategy
 # strategies
 from frontier import Frontier
 from sm import SM
+from nsm import NSM
 
 TRIALS = 10000
 
-LO = 0.33
-HI = 0.45
+LO = 0.30
+HI = 0.40
 STEP = 0.005
+
+def get_reward(miners, alpha: float) -> float:
+
+    game = Game(miners, alpha)
+
+    attacker_reward = 0
+    honest_reward = 0
+
+    for i in range(TRIALS):
+        game.reset()
+        
+        while not game.is_completed:
+            game.simulate()
+
+        attacker_reward += game.rewards[Miner.ATTACKER]
+        honest_reward += game.rewards[Miner.HONEST]
+
+    return attacker_reward / (attacker_reward + honest_reward)
 
 if __name__ == "__main__":
 
+    strat = input("Select a strategy (SM / NSM): ")
+
+    if strat == "SM":
+        outfile = "results/sm.csv"
+        attacker = SM()
+
+    elif strat == "NSM":
+        outfile = "results/nsm.csv"
+        attacker = NSM()
+
+    else:
+        print(f"error: could not recognize strategy {strat}")
+        exit()
+
     miners: dict[Miner, Strategy] = {
-        Miner.ATTACKER: SM(),
+        Miner.ATTACKER: attacker,
         Miner.HONEST: Frontier(),
     }
 
@@ -28,19 +61,7 @@ if __name__ == "__main__":
     datapoints = []
 
     for alpha in tqdm(alphas):
-        game = Game(miners, alpha)
-        rewards = []
+        datapoints.append((alpha, get_reward(miners, alpha)))
 
-        for i in tqdm(range(TRIALS)):
-            game.reset()
-            
-            while not game.is_completed:
-                game.simulate()
-
-            rewards.append((game.rewards[Miner.ATTACKER], game.rewards[Miner.HONEST]))
-
-        revenue = sum([x for x,_ in rewards]) / sum([x + y for x,y in rewards])
-        datapoints.append((alpha, revenue))
-
-    with open('out.csv', 'w') as f:
+    with open(outfile, 'w') as f:
         csv.writer(f, delimiter=' ').writerows(datapoints)
