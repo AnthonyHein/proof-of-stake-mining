@@ -32,7 +32,7 @@ def miner_k_reward(miner: Miner, start: State, end: State) -> int:
 
     for block in end.tree.longest_chain.ancestors():
         if block.miner == miner:
-            longest_chain_blocks_start += 1
+            longest_chain_blocks_end += 1
 
     return longest_chain_blocks_end - longest_chain_blocks_start
 

@@ -10,7 +10,7 @@ from strategy import Strategy
 from frontier import Frontier
 from sm import SM
 
-TRIALS = 100000
+TRIALS = 10000
 
 LO = 0.33
 HI = 0.45

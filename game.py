@@ -1,4 +1,5 @@
 from random import random
+from typing import List
 
 from block import Block
 from miner import Miner
@@ -8,7 +9,7 @@ from strategy import Strategy
 
 class Game:
 
-    def __init__(self, miners: dict[Miner, Strategy], alpha: float) -> None:
+    def __init__(self, miners: dict[Miner, Strategy], alpha: float, sequence: List[Miner] = [], stream: bool = False) -> None:
         """
         Setup an instance of the mining game with strategies defined by `miners`
         and `alpha` representing the portion of the network controlled by the
@@ -25,6 +26,10 @@ class Game:
 
         self.miners: dict[Miner, Strategy] = miners
         self.alpha: float = alpha
+
+
+        self.sequence = sequence
+        self.stream = stream
 
         self.rewards: dict[Miner, int] = {
             Miner.ATTACKER: 0,
@@ -43,6 +48,12 @@ class Game:
 
         # flag whether this game is completed
         self.is_completed: bool = False
+    
+    def _get_rewards(self) -> dict[Miner, int]:
+        return {
+            Miner.ATTACKER: miner_k_reward(Miner.ATTACKER, State(), self.state),
+            Miner.HONEST: miner_k_reward(Miner.HONEST, State(), self.state),
+        }
         
     def _mine_block(self) -> Block:
         """
@@ -52,7 +63,14 @@ class Game:
         if self.at_half:
             raise RuntimeError("Game._mine_block: cannot mine blocks at half-steps")
 
-        miner = Miner.ATTACKER if (random() <= self.alpha) else Miner.HONEST            
+        if len(self.sequence) > 0:
+            miner = self.sequence[0]
+            self.sequence = self.sequence[1:]
+        elif self.stream:
+            miner = Miner.ATTACKER if input("Next miner A/[H]: ") == "A" else Miner.HONEST
+        else:
+            miner = Miner.ATTACKER if (random() <= self.alpha) else Miner.HONEST 
+
         return Block(miner, self.timestep)
 
     def _simulate_honest_half_step(self) -> 'Game':
@@ -66,12 +84,7 @@ class Game:
         self.state = self.state.mine_block(new_block)
         action = self.miners[Miner.HONEST].get_action(self.state)
         self.state = self.state.take_action(action)
-
-        self.rewards = {
-            Miner.ATTACKER: miner_k_reward(Miner.ATTACKER, State(), self.state),
-            Miner.HONEST: miner_k_reward(Miner.HONEST, State(), self.state),
-        }
-
+        self.rewards = self._get_rewards()
         self.at_half = not self.at_half
 
         return self
@@ -85,12 +98,7 @@ class Game:
 
         action = self.miners[Miner.ATTACKER].get_action(self.state)
         self.state = self.state.take_action(action)
-
-        self.rewards = {
-            Miner.ATTACKER: miner_k_reward(Miner.ATTACKER, State(), self.state),
-            Miner.HONEST: miner_k_reward(Miner.HONEST, State(), self.state),
-        }
-
+        self.rewards = self._get_rewards()
         capitulation, is_completed = self.miners[Miner.ATTACKER].get_capitulation(self.state)
 
         # only capitulate if this is not a capitulation which ends the game (bc we want to observe final state)

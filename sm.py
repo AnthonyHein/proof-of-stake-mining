@@ -51,7 +51,7 @@ class SM(Strategy):
 
         if len(unpublished_blocks) == 0:
             return state.tree.longest_chain, True
-        elif len(unpublished_blocks) <= len(state.tree.longest_chain.ancestors()) - 1:
+        elif len(unpublished_blocks) < len(state.tree.longest_chain.ancestors()) - 1:
             return state.tree.longest_chain, True
         else:
             return state.tree.genesis, False
