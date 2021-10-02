@@ -6,11 +6,12 @@ from strategy import Strategy
 from frontier import Frontier
 from sm import SM
 from nsm import NSM
+from rem1 import REM1
 
 if __name__ == "__main__":
 
     miners: dict[Miner, Strategy] = {
-        Miner.ATTACKER: NSM(),
+        Miner.ATTACKER: REM1(),
         Miner.HONEST: Frontier(),
     }
 

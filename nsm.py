@@ -22,7 +22,7 @@ class NSM(Strategy):
         See the NSM strategy description at https://arxiv.org/pdf/2107.04069.pdf.
         """
         if not isinstance(state, State):
-            raise TypeError("SM.get_action: `state` must be of type `State`")
+            raise TypeError("NSM.get_action: `state` must be of type `State`")
 
         unpublished_blocks = state.unpublished_blocks[self.miner]
 
@@ -42,7 +42,7 @@ class NSM(Strategy):
         See the NSM strategy description at https://arxiv.org/pdf/2107.04069.pdf
         """
         if not isinstance(state, State):
-            raise TypeError("SM.get_capitulation: `state` must be of type `State`")
+            raise TypeError("NSM.get_capitulation: `state` must be of type `State`")
 
         unpublished_blocks = state.unpublished_blocks[self.miner]
 

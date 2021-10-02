@@ -9,6 +9,7 @@ from strategy import Strategy
 from frontier import Frontier
 from sm import SM
 from nsm import NSM
+from rem1 import REM1
 
 TRIALS = 10000
 
@@ -17,7 +18,7 @@ EPS = 1e-8
 MOMENTUM_THRESH = 2
 
 MINERS: dict[Miner, Strategy] = {
-    Miner.ATTACKER: NSM(),
+    Miner.ATTACKER: REM1(),
     Miner.HONEST: Frontier(),
 }
 
