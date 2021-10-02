@@ -8,20 +8,67 @@ from tree import Tree
 
 class State:
 
-    def __init__(self) -> None:
+    def __init__(self,
+                 tree: Tree = None,
+                 unpublished_blocks: dict[Miner, List[Block]] = None,
+                 rounds_mined_on: dict[Miner, List[int]] = None) -> None:
         """
         Maintains the state of the mining game.
         """
 
-        self.tree: Tree = Tree()
-        self.unpublished_blocks: dict[Miner, List[Block]] = {
-            Miner.ATTACKER: [],
-            Miner.HONEST: [],
-        }
-        self.rounds_mined_on: dict[Miner, List[int]] = {
-            Miner.ATTACKER: [],
-            Miner.HONEST: [],
-        }
+        if tree is not None and not isinstance(tree, Tree):
+            raise TypeError("State.__init__: `tree` must be None or of type `Tree`")
+        if unpublished_blocks is not None and not isinstance(unpublished_blocks, dict):
+            raise TypeError("State.__init__: `unpublished_blocks` must be None or of type `dict[Miner, List[Block]]`")
+        if unpublished_blocks is not None and not all(isinstance(k, Miner) and isinstance(v, list) for k, v in unpublished_blocks.items()):
+            raise TypeError("State.__init__: `unpublished_blocks` must be None or of type `dict[Miner, List[Block]]`")
+        if unpublished_blocks is not None and not all([Miner.ATTACKER in unpublished_blocks, Miner.HONEST in unpublished_blocks]):
+            raise TypeError("State.__init__: `unpublished_blocks` must be None or of type `dict[Miner, List[Block]]`")
+        if unpublished_blocks is not None and not all(isinstance(block, Block) for block in unpublished_blocks[Miner.ATTACKER]):
+            raise TypeError("State.__init__: `unpublished_blocks` must be None or of type `dict[Miner, List[Block]]`")
+        if unpublished_blocks is not None and not all(isinstance(block, Block) for block in unpublished_blocks[Miner.HONEST]):
+            raise TypeError("State.__init__: `unpublished_blocks` must be None or of type `dict[Miner, List[Block]]`")
+        if rounds_mined_on is not None and not isinstance(rounds_mined_on, dict):
+            raise TypeError("State.__init__: `rounds_mined_on` must be None or of type `dict[Miner, List[int]]`")
+        if rounds_mined_on is not None and not all(isinstance(k, Miner) and isinstance(v, list) for k, v in rounds_mined_on.items()):
+            raise TypeError("State.__init__: `rounds_mined_on` must be None or of type `dict[Miner, List[int]]`")
+        if rounds_mined_on is not None and not all([Miner.ATTACKER in rounds_mined_on, Miner.HONEST in rounds_mined_on]):
+            raise TypeError("State.__init__: `rounds_mined_on` must be None or of type `dict[Miner, List[int]]`")
+        if rounds_mined_on is not None and not all(isinstance(block, int) for block in rounds_mined_on[Miner.ATTACKER]):
+            raise TypeError("State.__init__: `rounds_mined_on` must be None or of type `dict[Miner, List[int]]`")
+        if unpublished_blocks is not None and not all(isinstance(block, int) for block in rounds_mined_on[Miner.HONEST]):
+            raise TypeError("State.__init__: `rounds_mined_on` must be None or of type `dict[Miner, List[int]]`")
+
+        if tree is not None:
+            self.tree = tree.copy()
+            
+        else:
+            self.tree: Tree = Tree()
+
+        if unpublished_blocks is not None:
+            self.unpublished_blocks = {
+                Miner.ATTACKER: [block.copy() for block in unpublished_blocks[Miner.ATTACKER]],
+                Miner.HONEST: [block.copy() for block in unpublished_blocks[Miner.HONEST]],
+            }
+        else:
+            self.unpublished_blocks: dict[Miner, List[Block]] = {
+                Miner.ATTACKER: [],
+                Miner.HONEST: [],
+            }
+
+        if rounds_mined_on is not None:
+            self.rounds_mined_on = rounds_mined_on.copy()
+        else:
+            self.rounds_mined_on: dict[Miner, List[int]] = {
+                Miner.ATTACKER: [],
+                Miner.HONEST: [],
+            }
+
+    def copy(self) -> 'State':
+        """
+        Returns a _deep_ copy of this state.
+        """
+        return State(self.tree, self.unpublished_blocks, self.rounds_mined_on)
 
     def capitulate(self, genesis: Block) -> 'State':
         """

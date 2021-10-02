@@ -7,6 +7,8 @@ from state import State
 from state_utils import *
 from strategy import Strategy
 
+EMPTY_STATE = State()
+
 class Game:
 
     def __init__(self, miners: dict[Miner, Strategy], alpha: float, sequence: List[Miner] = [], stream: bool = False) -> None:
@@ -31,6 +33,12 @@ class Game:
         self.sequence = sequence
         self.stream = stream
 
+        self.prev_cap_rewards: dict[Miner, int] = {
+            Miner.ATTACKER: 0,
+            Miner.HONEST: 0,
+        }
+
+
         self.rewards: dict[Miner, int] = {
             Miner.ATTACKER: 0,
             Miner.HONEST: 0,
@@ -48,11 +56,11 @@ class Game:
 
         # flag whether this game is completed
         self.is_completed: bool = False
-    
+
     def _get_rewards(self) -> dict[Miner, int]:
         return {
-            Miner.ATTACKER: miner_k_reward(Miner.ATTACKER, State(), self.state),
-            Miner.HONEST: miner_k_reward(Miner.HONEST, State(), self.state),
+            Miner.ATTACKER: self.prev_cap_rewards[Miner.ATTACKER] + miner_k_reward(Miner.ATTACKER, EMPTY_STATE, self.state),
+            Miner.HONEST: self.prev_cap_rewards[Miner.HONEST] + miner_k_reward(Miner.HONEST, EMPTY_STATE, self.state),
         }
         
     def _mine_block(self) -> Block:
@@ -102,7 +110,11 @@ class Game:
         capitulation, is_completed = self.miners[Miner.ATTACKER].get_capitulation(self.state)
 
         # only capitulate if this is not a capitulation which ends the game (bc we want to observe final state)
-        if not is_completed:
+        if capitulation is not None and not is_completed:
+            self.prev_cap_rewards = {
+                Miner.ATTACKER: miner_k_reward_according_to_block(Miner.ATTACKER, capitulation),
+                Miner.HONEST: miner_k_reward_according_to_block(Miner.HONEST, capitulation),
+            }
             self.state = self.state.capitulate(capitulation)
 
         # capitulation of a `Game` object only entails setting `self.timestep` correctly

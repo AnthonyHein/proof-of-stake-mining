@@ -3,10 +3,23 @@ from typing import Callable
 
 import sympy as sp
 
+from block import Block
 from miner import Miner
 from state import State
 
 # FIXME: sympy is way to slow for our purposes... need to ditch this
+
+def miner_k_reward_according_to_block(miner: Miner, block: Block) -> int:
+    """
+    Given a Block `block` which defines a path, calculate the integer-valued reward of
+    miner `miner` as the number of blocks created by miner `miner` in this path.
+    """
+    if not isinstance(miner, Miner):
+        raise TypeError("state_utils.miner_k_reward: `miner` must be of type `Miner`")
+    if not isinstance(block, Block):
+        raise TypeError("state_utils.miner_k_reward: `block` must be of type `Block`")
+
+    return sum([1 for block in block.ancestors() if block.miner == miner])
 
 def miner_k_reward(miner: Miner, start: State, end: State) -> int:
     """

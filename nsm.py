@@ -6,11 +6,11 @@ from miner import Miner
 from state import State
 from strategy import Strategy
 
-class SM(Strategy):
+class NSM(Strategy):
 
     def __init__(self) -> None:
         """
-        Instantiate the SELFISH MINING strategy.
+        Instantiate the NOTHING-AT-STAKE SELFISH MINING strategy.
         """
         self.miner: Miner = Miner.ATTACKER
 
@@ -19,16 +19,14 @@ class SM(Strategy):
     ) -> Union[Tuple[Action, None],
                Tuple[Action, Tuple[Miner, List[Block], int, Block]]]:
         """"
-        Publish on top of the longest chain when you have hidden a block that
-        can reach a height of exactly one greater than the public longest chain.
-        In all other cases, wait.
+        See the NSM strategy description at https://arxiv.org/pdf/2107.04069.pdf.
         """
         if not isinstance(state, State):
             raise TypeError("SM.get_action: `state` must be of type `State`")
 
         unpublished_blocks = state.unpublished_blocks[self.miner]
 
-        if len(unpublished_blocks) != 1 and len(unpublished_blocks) == len(state.tree.longest_chain.ancestors()):
+        if len(unpublished_blocks) != 1 and len(unpublished_blocks) == state.tree.longest_chain.height + 1:
             return (
                 Action.PUBLISH, (self.miner,
                                  unpublished_blocks,
@@ -41,8 +39,7 @@ class SM(Strategy):
     
     def get_capitulation(self, state: State) -> Tuple[Block, bool]:
         """
-        Capitulate the the longest chain if there are no unpublished blocks or
-        the private chain is trailing by one or more blocks.
+        See the NSM strategy description at https://arxiv.org/pdf/2107.04069.pdf
         """
         if not isinstance(state, State):
             raise TypeError("SM.get_capitulation: `state` must be of type `State`")
@@ -51,8 +48,10 @@ class SM(Strategy):
 
         if len(unpublished_blocks) == 0:
             return state.tree.longest_chain, True
-        elif len(unpublished_blocks) < len(state.tree.longest_chain.ancestors()) - 1:
+        elif len(unpublished_blocks) <= 1 and state.tree.longest_chain.height > 2:
             return state.tree.longest_chain, True
+        elif len(unpublished_blocks) <= 2 and state.tree.longest_chain.height > 2:
+            return state.tree.longest_chain.ancestors()[1], False
         else:
             return None, False
 

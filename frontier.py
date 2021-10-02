@@ -44,7 +44,7 @@ class Frontier(Strategy):
         if not isinstance(state, State):
             raise TypeError("Frontier.get_capitulation: `state` must be of type `State`")
 
-        return state.tree.longest_chain(), True
+        return state.tree.longest_chain, True
 
     def __repr__(self) -> str:
         """

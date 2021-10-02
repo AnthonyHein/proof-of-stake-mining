@@ -32,6 +32,7 @@ class Strategy:
         Get the capitulation that this strategy will perform given the state 
         `state`. A capitulation is described by the block that this strategy
         will now view as the genesis block and a boolean flag whether this
-        capitulation implies the game is over.
+        capitulation implies the game is over. Capitulations return `None,
+        False` if a capitulation does not occur on this turn.
         """
         pass

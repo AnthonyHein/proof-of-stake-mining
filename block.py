@@ -28,6 +28,12 @@ class Block:
         self.height: int = 0 if (miner == Miner.GENESIS) else -1
         self.parent: Block = None
 
+    def copy(self) -> 'Block':
+        """
+        Returns a _deep_ copy of this block.
+        """
+        return Block(self.miner, self.created_at)
+
     def publish(self, parent: 'Block') -> 'Block':
         """
         Publish `self` to point to `Block` object `parent` and return `self`.

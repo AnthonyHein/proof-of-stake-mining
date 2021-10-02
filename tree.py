@@ -7,14 +7,43 @@ from miner import Miner
 
 class Tree:
 
-    def __init__(self) -> None:
+    def __init__(self,
+                 genesis: Block = None,
+                 blocks: List[Block] = None,
+                 longest_chain: Block = None) -> None:
         """
         Create an empty block tree.
         """
 
-        self.genesis: Block = Block(Miner.GENESIS, 0)
-        self.blocks: List[Block] = [self.genesis]
-        self.longest_chain: Block = self.genesis
+        if genesis is not None and not isinstance(genesis, Block):
+            raise TypeError("Tree.__init__: `genesis` must be None or of type `Block`")
+        if blocks is not None and not isinstance(blocks, List):
+            raise TypeError("Tree.__init__: `blocks` must be None or of type `List[Block]`")
+        if blocks is not None and not all(isinstance(block, Block) for block in blocks):
+            raise TypeError("Tree.__init__: `blocks` must be None or of type `List[Block]`")
+        if longest_chain is not None and not isinstance(longest_chain, Block):
+            raise TypeError("Tree.__init__: `longest_chain` must be None or of type `Block`")
+        
+        if genesis is not None:
+            self.genesis = genesis.copy()
+        else:
+            self.genesis: Block = Block(Miner.GENESIS, 0)
+
+        if blocks is not None:
+            self.blocks = [block.copy() for block in blocks]
+        else:
+            self.blocks: List[Block] = [self.genesis]
+
+        if longest_chain is not None:
+            self.longest_chain = longest_chain.copy()
+        else:
+            self.longest_chain: Block = self.genesis
+
+    def copy(self) -> 'Tree':
+        """
+        Returns a _deep_ copy of this tree.
+        """
+        return Tree(self.genesis, self.blocks, self.longest_chain)
 
     def _get_longest_chain(self) -> Block:
         """
