@@ -83,10 +83,6 @@ class REM1(Strategy):
             non_failed_blocks = []
             lc_after_recent_failure = []
 
-        # print(f"Failed: {failed_rounds}", file=stderr)
-        # print(f"Non failed blocks: {non_failed_blocks}", file=stderr)
-        # print(f"LC after recent failure: {lc_after_recent_failure}", file=stderr)
-
         if len(unpublished_blocks) != 1 and len(unpublished_blocks) == state.tree.longest_chain.height + 1:
             self.just_published = True
             return (
