@@ -39,7 +39,7 @@ def save(settings, table: List[Cell]) -> None:
     f.write(f"alpha_pos_lb,{ALPHA_POS_LB},,,,,,\n")
     f.write(f"settings['exploration-depth'],{settings['exploration-depth']},,,,,,\n")
     f.write(f"settings['conjectures'],{settings['conjectures']},,,,,,\n")
-    f.write(f"id,state,lb_lemma,lb_str,lb_fn,ub_lemma,ub_str,ub_fn\n")
+    f.write(f"id,state,lb_lemma,lb_str,ub_lemma,ub_str,lb_fn,ub_fn\n")
 
     for cell in table:
         f.write(
@@ -47,9 +47,9 @@ def save(settings, table: List[Cell]) -> None:
             "\"" + str(cell.get_state()) + "\"" + "," +
             "\"" + str(cell.get_lb_lemma()) + "\"" + "," +
             "\"" + str(cell.get_lb_str()) + "\"" + "," +
-            "\"" + str(dill.dumps(cell.get_lb_fn())) + "\"" + "," +
             "\"" + str(cell.get_ub_lemma()) + "\"" + "," +
             "\"" + str(cell.get_ub_str()) + "\"" + "," +
+            "\"" + str(dill.dumps(cell.get_lb_fn())) + "\"" + "," +
             "\"" + str(dill.dumps(cell.get_ub_fn())) + "\"" + "\n"
         )
 
