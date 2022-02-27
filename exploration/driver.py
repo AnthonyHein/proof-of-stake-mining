@@ -53,7 +53,7 @@ def main():
         settings=settings,
         known_states=known_states,
         table=table,
-        conjectures=filter(lambda x: x["id"] in settings["conjectures"], conjectures),
+        conjectures=list(filter(lambda x: x["id"] in settings["conjectures"], conjectures)),
         lemmas=lemmas,
         state=state
     )

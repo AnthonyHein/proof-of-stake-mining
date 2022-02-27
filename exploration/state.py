@@ -49,6 +49,40 @@ class State:
         """
         return self.get_honest_miner_blocks()
 
+    def get_height_of_longest_chain(self) -> int:
+        """
+        Get the height of the longest chain, which is just the number of
+        blocks in the longest path.
+        """
+        return len(self.get_longest_path())
+
+    def get_heights_attacker_blocks_can_reach(self) -> List[int]:
+        """
+        Get the heights that the blocks owned by the attacker can reach. For
+        any attacker block, this is the maximum of
+        * the number of honest miner blocks which are less than this block plus one
+        * and, the height of the most previous attacker block plus one
+        """
+        attacker_blocks = self.get_attacker_blocks()
+        honest_miner_blocks = self.get_honest_miner_blocks()
+
+        heights_attacker_blocks_can_reach = []
+
+        prev_attacker_block_height = 0
+
+        for attacker_block in attacker_blocks:
+
+            curr_attacker_block_height = max(
+                sum([honest_miner_block < attacker_block for honest_miner_block in honest_miner_blocks]) + 1,
+                prev_attacker_block_height + 1,
+            )
+
+            prev_attacker_block_height = curr_attacker_block_height
+
+            heights_attacker_blocks_can_reach.append(curr_attacker_block_height)
+        
+        return heights_attacker_blocks_can_reach
+
     def __len__(self) -> int:
         """
         Get the round at which a state occurs.
@@ -100,36 +134,56 @@ class State:
 
 def main():
 
+    print("__str__()")
     print(State())
     print(State().next_state_attacker().next_state_attacker())
     print(State().next_state_attacker().next_state_honest_miner())
     print(State().next_state_honest_miner().next_state_attacker())
     print(State().next_state_honest_miner().next_state_honest_miner())
     print()
+    print("__repr__()")
     print(repr(State()))
     print(repr(State().next_state_attacker().next_state_attacker()))
     print(repr(State().next_state_attacker().next_state_honest_miner()))
     print(repr(State().next_state_honest_miner().next_state_attacker()))
     print(repr(State().next_state_honest_miner().next_state_honest_miner()))
     print()
+    print("get_attacker_blocks()")
     print(State().get_attacker_blocks())
     print(State().next_state_attacker().next_state_attacker().get_attacker_blocks())
     print(State().next_state_attacker().next_state_honest_miner().get_attacker_blocks())
     print(State().next_state_honest_miner().next_state_attacker().get_attacker_blocks())
     print(State().next_state_honest_miner().next_state_honest_miner().get_attacker_blocks())
     print()
+    print("get_honest_miner_blocks()")
     print(State().get_honest_miner_blocks())
     print(State().next_state_attacker().next_state_attacker().get_honest_miner_blocks())
     print(State().next_state_attacker().next_state_honest_miner().get_honest_miner_blocks())
     print(State().next_state_honest_miner().next_state_attacker().get_honest_miner_blocks())
     print(State().next_state_honest_miner().next_state_honest_miner().get_honest_miner_blocks())
     print()
+    print("get_height_of_longest_chain()")
+    print(State().get_height_of_longest_chain())
+    print(State().next_state_attacker().next_state_attacker().get_height_of_longest_chain())
+    print(State().next_state_attacker().next_state_honest_miner().get_height_of_longest_chain())
+    print(State().next_state_honest_miner().next_state_attacker().get_height_of_longest_chain())
+    print(State().next_state_honest_miner().next_state_honest_miner().get_height_of_longest_chain())
+    print()
+    print("get_heights_attacker_blocks_can_reach()")
+    print(State().get_heights_attacker_blocks_can_reach())
+    print(State().next_state_attacker().next_state_attacker().get_heights_attacker_blocks_can_reach())
+    print(State().next_state_attacker().next_state_honest_miner().get_heights_attacker_blocks_can_reach())
+    print(State().next_state_honest_miner().next_state_attacker().get_heights_attacker_blocks_can_reach())
+    print(State().next_state_honest_miner().next_state_honest_miner().get_heights_attacker_blocks_can_reach())
+    print()
+    print("__len__()")
     print(len(State()))
     print(len(State().next_state_attacker().next_state_attacker()))
     print(len(State().next_state_attacker().next_state_honest_miner()))
     print(len(State().next_state_honest_miner().next_state_attacker()))
     print(len(State().next_state_honest_miner().next_state_honest_miner()))
     print()
+    print("__int__()")
     print(int(State()))
     print(int(State().next_state_attacker().next_state_attacker()))
     print(int(State().next_state_attacker().next_state_honest_miner()))

@@ -1,5 +1,9 @@
-from lemmas.lemma_g8 import Lemma_G8
+from lemmas.farthest_recovery_publish import FarthestRecoveryPublish
+from lemmas.lemma_g8 import LemmaG8
+from lemmas.largest_publish import LargestPublish
 
 lemmas = [
-    Lemma_G8()
+    FarthestRecoveryPublish(),
+    LemmaG8(),
+    LargestPublish(),
 ]

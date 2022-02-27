@@ -1,5 +1,6 @@
 from datetime import datetime
 import dill
+import html
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import List
@@ -98,9 +99,9 @@ def _save_html(settings, table: List[Cell]) -> None:
                 f"<td>${str(cell.get_lb_str())}$</td>" +
                 f"<td>{str(cell.get_ub_lemma())}</td>" +
                 f"<td>${str(cell.get_ub_str())}$</td>" +
-                f"<td><img src=\"{PATH_TO_PLOTS_DIR.replace('temp/', '../')}{filename}-{int(cell.get_state())}.png\"></td>" +
-                f"<td><input class=\"form-control\" id=\"lb-fn-{str(int(cell.get_state()))}\" type=\"text\" value=\"{str(dill.dumps(cell.get_lb_fn()))}\"/><button type=\"button\" class=\"btn btn-light\" data-clipboard-target=\"#lb-fn-{str(int(cell.get_state()))}\"><i class=\"bi bi-clipboard\"></i></button></td>" +
-                f"<td><input class=\"form-control\" id=\"ub-fn-{str(int(cell.get_state()))}\" type=\"text\" value=\"{str(dill.dumps(cell.get_ub_fn()))}\"/><button type=\"button\" class=\"btn btn-light\" data-clipboard-target=\"#ub-fn-{str(int(cell.get_state()))}\"><i class=\"bi bi-clipboard\"></i></button></td>"
+                f"<td><img class=\"img-fluid\" src=\"{PATH_TO_PLOTS_DIR.replace('temp/', '../')}{filename}-{int(cell.get_state())}.png\"></td>" +
+                f"<td><input class=\"form-control\" id=\"lb-fn-{str(int(cell.get_state()))}\" type=\"text\" value=\"{html.escape(str(dill.dumps(cell.get_lb_fn())))}\"/><button type=\"button\" class=\"btn btn-light\" data-clipboard-target=\"#lb-fn-{str(int(cell.get_state()))}\"><i class=\"bi bi-clipboard\"></i></button></td>" +
+                f"<td><input class=\"form-control\" id=\"ub-fn-{str(int(cell.get_state()))}\" type=\"text\" value=\"{html.escape(str(dill.dumps(cell.get_ub_fn())))}\"/><button type=\"button\" class=\"btn btn-light\" data-clipboard-target=\"#ub-fn-{str(int(cell.get_state()))}\"><i class=\"bi bi-clipboard\"></i></button></td>"
             )
             f.write("\t\t</tr>\n")
     f.write(f"\t\t</tbody>")
@@ -127,4 +128,8 @@ def _plot_cell(settings, filename: str, cell: Cell) -> None:
     plt.plot([x for x in xs], [cell.get_lb_fn()(x) for x in xs], color="green")
     plt.plot([x for x in xs], [cell.get_ub_fn()(x) for x in xs], color="cyan")
 
+    plt.tight_layout()
+
     plt.savefig(PATH_TO_PLOTS_DIR + f"{filename}-{int(cell.get_state())}.png", transparent=True)
+
+    plt.clf()
