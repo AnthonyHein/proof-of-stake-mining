@@ -37,6 +37,7 @@ def save(settings, table: List[Cell]) -> None:
 
     f = open(PATH_TO_RESULTS_DIR + datetime.now().strftime("%m-%d-%Y--%H-%M-%S") + ".csv", "w")
     f.write(f"alpha_pos_lb,{ALPHA_POS_LB},,,,,,\n")
+    f.write(f"alpha_pos_ub,{ALPHA_POS_UB},,,,,,\n")
     f.write(f"settings['exploration-depth'],{settings['exploration-depth']},,,,,,\n")
     f.write(f"settings['conjectures'],{settings['conjectures']},,,,,,\n")
     f.write(f"id,state,lb_lemma,lb_str,ub_lemma,ub_str,lb_fn,ub_fn\n")
