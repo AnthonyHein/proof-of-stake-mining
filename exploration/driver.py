@@ -1,6 +1,3 @@
-import csv
-from datetime import datetime
-import dill
 import json
 import os
 import sys
@@ -9,52 +6,31 @@ from typing import List
 from cell import Cell
 from conjectures import conjectures
 from conjectures.conjecture import Conjecture
+from known_states import known_states
 from lemmas import lemmas
 from lemmas.lemma import Lemma
 from state import State
+from visualize import save
 
 PATH_TO_SETTINGS_DIR = "settings/"
-PATH_TO_RESULTS_DIR = "results/"
-
-ALPHA_POS_LB = 0.3080
-ALPHA_POS_UB = 0.3277
 
 def tabulate(settings,
+             known_states: List[State],
              table: List[Cell],
              conjectures: List[Conjecture],
              lemmas: List[Lemma],
              state: State) -> List[Cell]:
-
-    if len(state) >= settings["exploration-depth"]:
-        table[int(state)] = Cell(state).fill(conjectures, lemmas, ALPHA_POS_LB, ALPHA_POS_UB)
+    
+    if state in known_states:
         return table
 
-    table = tabulate(settings, table, conjectures, lemmas, state.next_state_attacker())
-    table = tabulate(settings, table, conjectures, lemmas, state.next_state_honest_miner())
+    if len(state) >= settings["exploration-depth"]:
+        table[int(state)] = Cell(state).fill(conjectures, lemmas, settings["alpha-pos-lb"], settings["alpha-pos-ub"])
+        return table
+
+    table = tabulate(settings, known_states, table, conjectures, lemmas, state.next_state_attacker())
+    table = tabulate(settings, known_states, table, conjectures, lemmas, state.next_state_honest_miner())
     return table
-
-def save(settings, table: List[Cell]) -> None:
-
-    f = open(PATH_TO_RESULTS_DIR + datetime.now().strftime("%m-%d-%Y--%H-%M-%S") + ".csv", "w")
-    f.write(f"alpha_pos_lb,{ALPHA_POS_LB},,,,,,\n")
-    f.write(f"alpha_pos_ub,{ALPHA_POS_UB},,,,,,\n")
-    f.write(f"settings['exploration-depth'],{settings['exploration-depth']},,,,,,\n")
-    f.write(f"settings['conjectures'],{settings['conjectures']},,,,,,\n")
-    f.write(f"id,state,lb_lemma,lb_str,ub_lemma,ub_str,lb_fn,ub_fn\n")
-
-    for cell in table:
-        f.write(
-            "\"" + str(int(cell.get_state())) + "\"" + "," +
-            "\"" + str(cell.get_state()) + "\"" + "," +
-            "\"" + str(cell.get_lb_lemma()) + "\"" + "," +
-            "\"" + str(cell.get_lb_str()) + "\"" + "," +
-            "\"" + str(cell.get_ub_lemma()) + "\"" + "," +
-            "\"" + str(cell.get_ub_str()) + "\"" + "," +
-            "\"" + str(dill.dumps(cell.get_lb_fn())) + "\"" + "," +
-            "\"" + str(dill.dumps(cell.get_ub_fn())) + "\"" + "\n"
-        )
-
-    f.close()
 
 def main():
 
@@ -75,6 +51,7 @@ def main():
 
     table = tabulate(
         settings=settings,
+        known_states=known_states,
         table=table,
         conjectures=filter(lambda x: x["id"] in settings["conjectures"], conjectures),
         lemmas=lemmas,

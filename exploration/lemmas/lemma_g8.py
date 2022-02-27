@@ -54,7 +54,7 @@ class Lemma_G8(Lemma):
         def fn(alpha):
             return (2 + (alpha / (1 - 2 * alpha))) * (1 - alpha)
 
-        return "(2 + (alpha / (1 - 2 * alpha))) * (1 - alpha)", fn
+        return "(2 + \\frac{\\alpha}{1 - 2\\alpha})(1 - \\lambda)", fn
 
     
 

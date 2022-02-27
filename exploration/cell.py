@@ -1,4 +1,4 @@
-from cmath import inf
+import os
 from typing import Callable, List
 
 from conjectures.conjecture import Conjecture

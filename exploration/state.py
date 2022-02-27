@@ -63,6 +63,12 @@ class State:
         """
         return self.id
 
+    def __eq__(self, other: 'State') -> bool:
+        """
+        Return `True` if two states are equal and false otherwise.
+        """
+        return self.sequence == other.sequence
+
     def __str__(self) -> str:
         """
         Return a human readable string summarizing a state.
