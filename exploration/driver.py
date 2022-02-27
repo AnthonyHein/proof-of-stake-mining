@@ -43,14 +43,14 @@ def save(settings, table: List[Cell]) -> None:
 
     for cell in table:
         f.write(
-            str(int(cell.get_state())) + "," +
-            str(cell.get_state()) + "," +
-            str(cell.get_lb_lemma()) + "," +
-            str(cell.get_lb_str()) + "," +
-            str(dill.dumps(cell.get_lb_fn())) + "," +
-            str(cell.get_ub_lemma()) + "," +
-            str(cell.get_ub_str()) + "," +
-            str(dill.dumps(cell.get_ub_fn())) + "\n"
+            "\"" + str(int(cell.get_state())) + "\"" + "," +
+            "\"" + str(cell.get_state()) + "\"" + "," +
+            "\"" + str(cell.get_lb_lemma()) + "\"" + "," +
+            "\"" + str(cell.get_lb_str()) + "\"" + "," +
+            "\"" + str(dill.dumps(cell.get_lb_fn())) + "\"" + "," +
+            "\"" + str(cell.get_ub_lemma()) + "\"" + "," +
+            "\"" + str(cell.get_ub_str()) + "\"" + "," +
+            "\"" + str(dill.dumps(cell.get_ub_fn())) + "\"" + "\n"
         )
 
     f.close()
