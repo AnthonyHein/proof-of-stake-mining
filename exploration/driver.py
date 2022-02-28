@@ -25,7 +25,22 @@ def tabulate(settings,
         return table
 
     if len(state) >= settings["exploration-depth"]:
-        table[int(state)] = Cell(state).fill(conjectures, lemmas, settings["alpha-pos-lb"], settings["alpha-pos-ub"])
+    
+        c = Cell(state.next_state_attacker()).fill(conjectures, lemmas, settings["alpha-pos-lb"], settings["alpha-pos-ub"])
+
+        if settings["ub-assumes-wait"]:
+            c_next_a = Cell(state.next_state_attacker()).fill(conjectures, lemmas, settings["alpha-pos-lb"], settings["alpha-pos-ub"])
+            c_next_h = Cell(state.next_state_honest_miner()).fill(conjectures, lemmas, settings["alpha-pos-lb"], settings["alpha-pos-ub"])
+            c = Cell(
+                state,
+                c.get_lb_lemma(),
+                c.get_lb_str(),
+                c.get_lb_fn(),
+                c_next_a.get_ub_lemma() + ", " + c_next_h.get_ub_lemma(),
+                "\\alpha\\bigg(" + c_next_a.get_ub_str() + "\\bigg) + (1 - \\alpha)\\bigg(" + c_next_h.get_ub_str() + "\\bigg)",
+                lambda alpha: alpha * c_next_a.get_ub_fn()(alpha) + (1  - alpha) * c_next_h.get_ub_fn()(alpha))
+
+        table[int(state)] = c
         return table
 
     table = tabulate(settings, known_states, table, conjectures, lemmas, state.next_state_attacker())
