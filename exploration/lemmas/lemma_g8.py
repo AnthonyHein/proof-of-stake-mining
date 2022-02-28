@@ -87,7 +87,7 @@ class LemmaG8(Lemma):
 
         if len(attacker_blocks_below_longest_chain) > 0:
             upper_bounded_reward_below_longest_chain_str = " + ".join([
-                (str(runs[i]) if runs[i] > 1 or deficits[i] == 0 else "") + ("(\\tfrac{\\alpha}{1 - \\alpha})" if deficits[i] > 0 else "") + ("^" + str(deficits[i]) if deficits[i] > 1 else "")
+                (str(runs[i]) if runs[i] > 1 or deficits[i] == 0 else "") + ("(\\tfrac{\\alpha}{1 - \\alpha})" if deficits[i] > 0 else "") + ("^{" + str(deficits[i]) + "}" if deficits[i] > 1 else "")
                 for i
                 in range(len(runs))
             ])

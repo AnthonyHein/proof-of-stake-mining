@@ -57,56 +57,25 @@ class NonCheckpointFinality(Lemma):
         attacker_blocks_below_longest_chain = list(filter(lambda x: x <= height_of_longest_chain, heights_attacker_blocks_can_reach))
         attacker_blocks_above_longest_chain = list(filter(lambda x: x > height_of_longest_chain, heights_attacker_blocks_can_reach))
 
-        deficits = []
-        runs = []
+        if len(attacker_blocks_above_longest_chain) > 0:
+            return None
 
-        curr_deficit = 1
-        curr_run = 0
+        x = height_of_longest_chain - (attacker_blocks_below_longest_chain[-1] - 1)
+        
+        if x < len(attacker_blocks_below_longest_chain) - 2:
+            return None
 
-        for i in range(height_of_longest_chain, 0, -1):
-            if i in attacker_blocks_below_longest_chain:
-                curr_run += 1
-                continue
+        non_consecutive_blocks = list(filter(lambda b: b - 1 not in attacker_blocks_below_longest_chain, attacker_blocks_below_longest_chain))
 
-            else:
-                if curr_run > 0:
-                    deficits.append(max(curr_deficit - len(attacker_blocks_above_longest_chain), 0))
-                    runs.append(curr_run)
-                curr_run = 0
-                curr_deficit += 1
+        for non_consecutive_block in non_consecutive_blocks:
+            
+            size_if_publish = sum([b >= non_consecutive_block for b in attacker_blocks_below_longest_chain])
+            lead_if_not_publish = height_of_longest_chain - size_if_publish - (non_consecutive_block - 1)
 
-        if curr_run > 0:
-            deficits.append(max(curr_deficit - len(attacker_blocks_above_longest_chain), 0))
-            runs.append(curr_run)
+            if (- size_if_publish + lead_if_not_publish * (alpha_pos_lb / (1 - 2 * alpha_pos_lb))) * (1 - alpha_pos_lb) - height_of_longest_chain * alpha_pos_lb < 0:
+                return None
 
-        def upper_bounded_reward_below_longest_chain_fn(alpha) -> float:
-            return sum([runs[i] * (alpha / (1 - alpha)) ** deficits[i] for i in range(len(runs))])
-
-        upper_bounded_reward_below_longest_chain_str = ""
-
-        if len(attacker_blocks_below_longest_chain) > 0:
-            upper_bounded_reward_below_longest_chain_str = " + ".join([
-                (str(runs[i]) if runs[i] > 1 or deficits[i] == 0 else "") + ("(\\tfrac{\\alpha}{1 - \\alpha})" if deficits[i] > 0 else "") + ("^" + str(deficits[i]) if deficits[i] > 1 else "")
-                for i
-                in range(len(runs))
-            ])
-
-        def upper_bounded_reward_above_longest_chain_fn(alpha) -> float:
-            return (len(attacker_blocks_above_longest_chain) + max(len(attacker_blocks_above_longest_chain) - 1, 0) * (alpha / (1 - 2 * alpha))) * (1 - alpha)
-
-        upper_bounded_reward_above_longest_chain_str = ""
-
-        if len(attacker_blocks_above_longest_chain) > 2:
-            upper_bounded_reward_above_longest_chain_str = "\\big(" + str(len(attacker_blocks_above_longest_chain)) + " + " + str((len(attacker_blocks_above_longest_chain) - 1)) + "(\\tfrac{\\alpha}{1 - 2\\alpha})\\big)(1 - \\lambda)"
-        elif len(attacker_blocks_above_longest_chain) == 2:
-            upper_bounded_reward_above_longest_chain_str = "\\big(" + str(len(attacker_blocks_above_longest_chain)) + "+ (\\tfrac{\\alpha}{1 - 2\\alpha})\\big)(1 - \\lambda)"
-        elif len(attacker_blocks_above_longest_chain) == 1:
-            upper_bounded_reward_above_longest_chain_str = "1 - \\alpha"
-
-        return (
-            upper_bounded_reward_below_longest_chain_str + (" + " if upper_bounded_reward_above_longest_chain_str != "" and upper_bounded_reward_below_longest_chain_str != "" else "") + upper_bounded_reward_above_longest_chain_str,
-            lambda alpha: upper_bounded_reward_below_longest_chain_fn(alpha) + upper_bounded_reward_above_longest_chain_fn(alpha)
-        )
+        return "0", lambda alpha: 0
 
     
 
