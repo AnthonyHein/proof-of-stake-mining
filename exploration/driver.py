@@ -26,7 +26,7 @@ def tabulate(settings,
 
     if len(state) >= settings["exploration-depth"]:
     
-        c = Cell(state.next_state_attacker()).fill(conjectures, lemmas, settings["alpha-pos-lb"], settings["alpha-pos-ub"])
+        c = Cell(state).fill(conjectures, lemmas, settings["alpha-pos-lb"], settings["alpha-pos-ub"])
 
         if settings["ub-assumes-wait"]:
             c_next_a = Cell(state.next_state_attacker()).fill(conjectures, lemmas, settings["alpha-pos-lb"], settings["alpha-pos-ub"])
