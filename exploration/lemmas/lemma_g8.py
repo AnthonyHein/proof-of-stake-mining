@@ -67,7 +67,6 @@ class LemmaG8(Lemma):
         for i in range(height_of_longest_chain, 0, -1):
             if i in attacker_blocks_below_longest_chain:
                 curr_run += 1
-                continue
 
             else:
                 if curr_run > 0:
