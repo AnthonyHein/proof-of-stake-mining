@@ -1,15 +1,15 @@
-from typing import List
+from typing import List, Tuple
 
 class State:
 
-    def __init__(self, sequence: List[str] = []) -> None:
+    def __init__(self, sequence: Tuple[str, ...] = ()) -> None:
         """
         Initializes the state that results from mining sequence `sequence`
         where the honest miner plays \textsc{Frontier} and the attacker has
         not published any blocks.
         """
 
-        if sequence is None or not isinstance(sequence, List):
+        if sequence is None or not isinstance(sequence, Tuple):
             print(f"State.__init__: argument `sequence` to `__init__()` is not a list, with value {sequence}")
         if not all(miner in ['A', 'H'] for miner in sequence):
             print(f"State.__init__: argument `sequence` to `__init__()` has an invalid miner, with value {sequence}")
@@ -21,14 +21,14 @@ class State:
         """"
         Get the state that follows `self` when the next miner is the attacker.
         """
-        return State(self.sequence + ['A'])
+        return State(tuple(list(self.sequence) + ['A']))
 
     def next_state_honest_miner(self) -> 'State':
         """"
         Get the state that follows `self` when the next miner is the honest
         participant.
         """
-        return State(self.sequence + ['H'])
+        return State(tuple(list(self.sequence) + ['H']))
 
     def get_attacker_blocks(self) -> List[int]:
         """"
@@ -103,6 +103,9 @@ class State:
         """
         return self.sequence == other.sequence
 
+    def __hash__(self):
+        return hash(self.sequence)
+
     def __str__(self) -> str:
         """
         Return a human readable string summarizing a state.
@@ -124,7 +127,7 @@ class State:
         
         s += f"{run if run != 1 else ''}{c} " if c is not None else ""
 
-        return f"[{s.rstrip(', ')}]"
+        return f"({s.rstrip(', ')})"
 
     def __repr__(self) -> str:
         """
