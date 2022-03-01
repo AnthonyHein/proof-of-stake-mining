@@ -30,9 +30,8 @@ class LargestPublish(Lemma):
 
     @staticmethod
     def lower_bound(state: State,
-                    conjectures: List[Conjecture],
-                    alpha_pos_lb: float,
-                    alpha_pos_ub: float) -> Union[Tuple[str, Callable[[float], float]], None]:
+                    settings: dict[str, object],
+                    conjectures: List[Conjecture]) -> Union[Tuple[str, Callable[[float], float]], None]:
         """
         Return the lower bound to the value of `state` that is achieved
         by this lemma as a string formula and function of alpha, or `None`
@@ -72,9 +71,8 @@ class LargestPublish(Lemma):
 
     @staticmethod
     def upper_bound(state: State,
-                    conjectures: List[Conjecture],
-                    alpha_pos_lb: float,
-                    alpha_pos_ub: float) -> Union[Tuple[str, Callable[[float], float]], None]:
+                    settings: dict[str, object],
+                    conjectures: List[Conjecture]) -> Union[Tuple[str, Callable[[float], float]], None]:
         """
         Return the upper bound to the value of `state` that is achieved
         by this lemma as a string formula and function of alpha, or `None`

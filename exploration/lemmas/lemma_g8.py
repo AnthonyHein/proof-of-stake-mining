@@ -31,9 +31,8 @@ class LemmaG8(Lemma):
 
     @staticmethod
     def lower_bound(state: State,
-                    conjectures: List[Conjecture],
-                    alpha_pos_lb: float,
-                    alpha_pos_ub: float) -> Union[Tuple[str, Callable[[float], float]], None]:
+                    settings: dict[str, object],
+                    conjectures: List[Conjecture]) -> Union[Tuple[str, Callable[[float], float]], None]:
         """
         Return the lower bound to the value of `state` that is achieved
         by this lemma as a string formula and function of alpha, or `None`
@@ -43,9 +42,8 @@ class LemmaG8(Lemma):
 
     @staticmethod
     def upper_bound(state: State,
-                    conjectures: List[Conjecture],
-                    alpha_pos_lb: float,
-                    alpha_pos_ub: float) -> Union[Tuple[str, Callable[[float], float]], None]:
+                    settings: dict[str, object],
+                    conjectures: List[Conjecture]) -> Union[Tuple[str, Callable[[float], float]], None]:
         """
         Return the upper bound to the value of `state` that is achieved
         by this lemma as a string formula and function of alpha, or `None`
@@ -103,8 +101,17 @@ class LemmaG8(Lemma):
         elif len(attacker_blocks_above_longest_chain) == 1:
             upper_bounded_reward_above_longest_chain_str = "1 - \\alpha"
 
+        ub_str = ""
+
+        if upper_bounded_reward_below_longest_chain_str == "" and upper_bounded_reward_above_longest_chain_str == "":
+            ub_str = "0"
+        elif upper_bounded_reward_above_longest_chain_str != "" and upper_bounded_reward_below_longest_chain_str != "":
+            ub_str = upper_bounded_reward_below_longest_chain_str + " + " + upper_bounded_reward_above_longest_chain_str
+        else:
+            ub_str = upper_bounded_reward_below_longest_chain_str + upper_bounded_reward_above_longest_chain_str
+
         return (
-            upper_bounded_reward_below_longest_chain_str + (" + " if upper_bounded_reward_above_longest_chain_str != "" and upper_bounded_reward_below_longest_chain_str != "" else "") + upper_bounded_reward_above_longest_chain_str,
+            ub_str,
             lambda alpha: upper_bounded_reward_below_longest_chain_fn(alpha) + upper_bounded_reward_above_longest_chain_fn(alpha)
         )
 

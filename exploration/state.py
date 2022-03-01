@@ -1,8 +1,9 @@
+import sys
 from typing import List, Tuple
 
 class State:
 
-    def __init__(self, sequence: Tuple[str, ...] = ()) -> None:
+    def __init__(self, sequence: Tuple[str, ...] = (), capacity: int = None) -> None:
         """
         Initializes the state that results from mining sequence `sequence`
         where the honest miner plays \textsc{Frontier} and the attacker has
@@ -11,24 +12,38 @@ class State:
 
         if sequence is None or not isinstance(sequence, Tuple):
             print(f"State.__init__: argument `sequence` to `__init__()` is not a list, with value {sequence}")
+            sys.exit(1)
         if not all(miner in ['A', 'H'] for miner in sequence):
             print(f"State.__init__: argument `sequence` to `__init__()` has an invalid miner, with value {sequence}")
+            sys.exit(1)
+        if capacity is not None and not isinstance(capacity, int):
+            print(f"State.__init__: argument `capacity` to `__init__()` is invalid, with value {capacity}")
+            sys.exit(1)
+        if capacity is not None and len(sequence) > capacity:
+            print(f"State.__init__: argument `sequence` {sequence} exceeds `capacity` {capacity}")
+            sys.exit(1)
 
         self.sequence = sequence
-        self.id = sum([int(v == 'A') * pow(2, len(self.sequence) - i - 1) for i, v in enumerate(self.sequence)])
+
+        if capacity is None:
+            capacity = len(sequence)
+
+        self.capacity = capacity
+
+        self.id = pow(2, len(sequence)) - 1 + sum([int(sequence[i] == 'A') * pow(2, len(self.sequence) - i - 1) if i < len(sequence) else 0 for i in range(capacity)])
 
     def next_state_attacker(self) -> 'State':
         """"
         Get the state that follows `self` when the next miner is the attacker.
         """
-        return State(tuple(list(self.sequence) + ['A']))
+        return State(tuple(list(self.sequence) + ['A']), max(self.capacity, len(self.sequence) + 1))
 
     def next_state_honest_miner(self) -> 'State':
         """"
         Get the state that follows `self` when the next miner is the honest
         participant.
         """
-        return State(tuple(list(self.sequence) + ['H']))
+        return State(tuple(list(self.sequence) + ['H']), max(self.capacity, len(self.sequence) + 1))
 
     def get_attacker_blocks(self) -> List[int]:
         """"
@@ -127,13 +142,13 @@ class State:
         
         s += f"{run if run != 1 else ''}{c} " if c is not None else ""
 
-        return f"({s.rstrip(', ')})"
+        return f"({s.rstrip(', ')})" if len(self.sequence) > 0 else "Genesis"
 
     def __repr__(self) -> str:
         """
         Return a string which can be used to reconstruct the state.
         """
-        return f"State(sequence={self.sequence})"
+        return f"State(sequence={self.sequence}, capacity={self.capacity})"
 
 def main():
 
@@ -192,6 +207,12 @@ def main():
     print(int(State().next_state_attacker().next_state_honest_miner()))
     print(int(State().next_state_honest_miner().next_state_attacker()))
     print(int(State().next_state_honest_miner().next_state_honest_miner()))
+    print()
+    print(int(State(capacity=3)))
+    print(int(State(capacity=3).next_state_attacker().next_state_attacker()))
+    print(int(State(capacity=3).next_state_attacker().next_state_honest_miner()))
+    print(int(State(capacity=3).next_state_honest_miner().next_state_attacker()))
+    print(int(State(capacity=3).next_state_honest_miner().next_state_honest_miner()))
     print()
 
 if __name__ == "__main__":

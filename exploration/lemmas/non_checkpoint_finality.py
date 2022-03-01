@@ -30,9 +30,8 @@ class NonCheckpointFinality(Lemma):
 
     @staticmethod
     def lower_bound(state: State,
-                    conjectures: List[Conjecture],
-                    alpha_pos_lb: float,
-                    alpha_pos_ub: float) -> Union[Tuple[str, Callable[[float], float]], None]:
+                    settings: dict[str, object],
+                    conjectures: List[Conjecture]) -> Union[Tuple[str, Callable[[float], float]], None]:
         """
         Return the lower bound to the value of `state` that is achieved
         by this lemma as a string formula and function of alpha, or `None`
@@ -42,9 +41,8 @@ class NonCheckpointFinality(Lemma):
 
     @staticmethod
     def upper_bound(state: State,
-                    conjectures: List[Conjecture],
-                    alpha_pos_lb: float,
-                    alpha_pos_ub: float) -> Union[Tuple[str, Callable[[float], float]], None]:
+                    settings: dict[str, object],
+                    conjectures: List[Conjecture]) -> Union[Tuple[str, Callable[[float], float]], None]:
         """
         Return the upper bound to the value of `state` that is achieved
         by this lemma as a string formula and function of alpha, or `None`
@@ -56,6 +54,9 @@ class NonCheckpointFinality(Lemma):
 
         attacker_blocks_below_longest_chain = list(filter(lambda x: x <= height_of_longest_chain, heights_attacker_blocks_can_reach))
         attacker_blocks_above_longest_chain = list(filter(lambda x: x > height_of_longest_chain, heights_attacker_blocks_can_reach))
+
+        if len(attacker_blocks_below_longest_chain) == 0:
+            return None
 
         if len(attacker_blocks_above_longest_chain) > 0:
             return None
@@ -72,7 +73,7 @@ class NonCheckpointFinality(Lemma):
             size_if_publish = sum([b >= non_consecutive_block for b in attacker_blocks_below_longest_chain])
             lead_if_not_publish = height_of_longest_chain - size_if_publish - (non_consecutive_block - 1)
 
-            if (- size_if_publish + lead_if_not_publish * (alpha_pos_lb / (1 - 2 * alpha_pos_lb))) * (1 - alpha_pos_lb) - height_of_longest_chain * alpha_pos_lb < 0:
+            if (- size_if_publish + lead_if_not_publish * (settings["alpha-pos-lb"] / (1 - 2 * settings["alpha-pos-lb"]))) * (1 - settings["alpha-pos-lb"]) - height_of_longest_chain * settings["alpha-pos-lb"] < 0:
                 return None
 
         return "0", lambda alpha: 0

@@ -29,9 +29,8 @@ class FarthestRecoveryPublish(Lemma):
 
     @staticmethod
     def lower_bound(state: State,
-                    conjectures: List[Conjecture],
-                    alpha_pos_lb: float,
-                    alpha_pos_ub: float) -> Union[Tuple[str, Callable[[float], float]], None]:
+                    settings: dict[str, object],
+                    conjectures: List[Conjecture]) -> Union[Tuple[str, Callable[[float], float]], None]:
         """
         Return the lower bound to the value of `state` that is achieved
         by this lemma as a string formula and function of alpha, or `None`
@@ -42,6 +41,9 @@ class FarthestRecoveryPublish(Lemma):
 
         attacker_blocks_below_longest_chain = list(filter(lambda x: x <= height_of_longest_chain, heights_attacker_blocks_can_reach))
         attacker_blocks_above_longest_chain = list(filter(lambda x: x > height_of_longest_chain, heights_attacker_blocks_can_reach))
+
+        if len(attacker_blocks_below_longest_chain) == 0:
+            return ("0", lambda x: 0)
 
         if len(attacker_blocks_above_longest_chain) == 0:
             return ("0", lambda x: 0)
@@ -65,7 +67,7 @@ class FarthestRecoveryPublish(Lemma):
                 curr_deficit += 1
 
         if curr_run > 0:
-            deficits.append(max(curr_deficit - len(attacker_blocks_above_longest_chain), 0))
+            deficits.append(curr_deficit)
             runs.append(curr_run)
 
         recovered_blocks = sum([runs[i] if deficits[i] <= len(attacker_blocks_above_longest_chain) else 0 for i in range(len(deficits))])
@@ -88,9 +90,8 @@ class FarthestRecoveryPublish(Lemma):
 
     @staticmethod
     def upper_bound(state: State,
-                    conjectures: List[Conjecture],
-                    alpha_pos_lb: float,
-                    alpha_pos_ub: float) -> Union[Tuple[str, Callable[[float], float]], None]:
+                    settings: dict[str, object],
+                    conjectures: List[Conjecture]) -> Union[Tuple[str, Callable[[float], float]], None]:
         """
         Return the upper bound to the value of `state` that is achieved
         by this lemma as a string formula and function of alpha, or `None`

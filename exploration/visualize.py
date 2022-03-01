@@ -7,7 +7,7 @@ import os
 import sys
 from typing import List
 
-# plt.rcParams["figure.figsize"] = [3, 2]
+plt.rcParams["figure.figsize"] = [7, 3]
 
 from cell import Cell
 
@@ -74,7 +74,7 @@ def _save_html_table(settings, table: List[Cell]) -> None:
     f.write(f"\t\t<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css\" integrity=\"sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T\" crossorigin=\"anonymous\">\n")
     f.write(f"\t\t<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css\">\n")
     f.write(f"\t\t<script src=\"https://cdn.jsdelivr.net/npm/clipboard@2.0.10/dist/clipboard.min.js\"></script>\n")
-    f.write(f"\t\t<script type=\"text/x-mathjax-config\">MathJax.Hub.Config({{tex2jax: {{inlineMath: [['$','$'], ['\\(','\\)']]}}}});</script>\n")
+    f.write(f"\t\t<script type=\"text/x-mathjax-config\">MathJax.Hub.Config({{tex2jax: {{inlineMath: [['$','$']]}}}});</script>\n")
     f.write(f"\t\t<script type=\"text/javascript\" src=\"http://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML\"></script>\n")
     f.write(f"\t</head>\n")
     f.write(f"\t<body>\n")
@@ -104,7 +104,7 @@ def _save_html_table(settings, table: List[Cell]) -> None:
             f.write("\t\t<tr>")
             f.write(
                 f"<td>{str(int(cell.get_state()))}</td>" +
-                f"<td>{str(cell.get_state())}</td>" +
+                f"<td>${str(cell.get_state())}$</td>" +
                 f"<td>{str(cell.get_lb_lemma())}</td>" +
                 f"<td>${str(cell.get_lb_str())}$</td>" +
                 f"<td>{str(cell.get_ub_lemma())}</td>" +
@@ -139,7 +139,7 @@ def _save_html_cards(settings, table: List[Cell]) -> None:
     f.write(f"\t\t<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css\" integrity=\"sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T\" crossorigin=\"anonymous\">\n")
     f.write(f"\t\t<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css\">\n")
     f.write(f"\t\t<script src=\"https://cdn.jsdelivr.net/npm/clipboard@2.0.10/dist/clipboard.min.js\"></script>\n")
-    f.write(f"\t\t<script type=\"text/x-mathjax-config\">MathJax.Hub.Config({{tex2jax: {{inlineMath: [['$','$'], ['\\(','\\)']]}}}});</script>\n")
+    f.write(f"\t\t<script type=\"text/x-mathjax-config\">MathJax.Hub.Config({{tex2jax: {{inlineMath: [['$','$']]}}}});</script>\n")
     f.write(f"\t\t<script type=\"text/javascript\" src=\"http://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML\"></script>\n")
     f.write(f"\t</head>\n")
     f.write(f"\t<body>\n")
@@ -156,6 +156,7 @@ def _save_html_cards(settings, table: List[Cell]) -> None:
     f.write(f"\t\t</table>\n")
 
     f.write(f"\t\t<h1>Exploration</h1>\n")
+    f.write(f"\t\t<div class=\"p-2 fixed-bottom bg-info text-white\"><p><b>Search:</b><input class=\"form-control\" id=\"filter\" placeholder=\"Type a state prefix in abbreviated notation with parentheses and spaces after commas to filter results.\"/></p></div>\n")
     f.write(f"\t\t<table class=\"table table-striped\">\n")
     f.write(f"\t\t<thead class=\"thead-dark\">\n")
     f.write(f"\t\t<tr><th scope=\"col\"></th></tr>\n")
@@ -174,21 +175,33 @@ def _save_html_cards(settings, table: List[Cell]) -> None:
             f.write(f"\t\t\t\t\t\t{str(int(cell.get_state()))}\n")
             f.write(f"\t\t\t\t\t</p>\n")
             f.write(f"\t\t\t\t\t<h2>\n")
-            f.write(f"\t\t\t\t\t\t{str(cell.get_state())}\n")
+            f.write(f"\t\t\t\t\t\t${str(cell.get_state())}$\n")
             f.write(f"\t\t\t\t\t</h2>\n")
             f.write(f"<hr />\n")
             f.write(f"\t\t\t\t\t<p>\n")
-            f.write(f"\t\t\t\t\t\t<b>Lemmas used for lower bound:</b>&nbsp;{str(cell.get_lb_lemma())}\n")
+            f.write(f"\t\t\t\t\t\t<b>Lemmas used for lower bound:</b>\n")
             f.write(f"\t\t\t\t\t</p>\n")
             f.write(f"\t\t\t\t\t<p>\n")
-            f.write(f"\t\t\t\t\t\t<b>Value of lower bound:</b>&nbsp;${str(cell.get_lb_str())}$\n")
+            f.write(f"\t\t\t\t\t\t{str(cell.get_lb_lemma())}\n")
+            f.write(f"\t\t\t\t\t</p>\n")
+            f.write(f"\t\t\t\t\t<p>\n")
+            f.write(f"\t\t\t\t\t\t<b>Value of lower bound:</b>\n")
+            f.write(f"\t\t\t\t\t</p>\n")
+            f.write(f"\t\t\t\t\t<p>\n")
+            f.write(f"\t\t\t\t\t\t${str(cell.get_lb_str())}$\n")
             f.write(f"\t\t\t\t\t</p>\n")
             f.write(f"<hr />\n")
             f.write(f"\t\t\t\t\t<p>\n")
-            f.write(f"\t\t\t\t\t\t<b>Lemmas used for upper bound:</b>&nbsp;{str(cell.get_ub_lemma())}\n")
+            f.write(f"\t\t\t\t\t\t<b>Lemmas used for upper bound:</b>\n")
             f.write(f"\t\t\t\t\t</p>\n")
             f.write(f"\t\t\t\t\t<p>\n")
-            f.write(f"\t\t\t\t\t\t<b>Value of upper bound:</b>&nbsp;${str(cell.get_ub_str())}$\n")
+            f.write(f"\t\t\t\t\t\t{str(cell.get_ub_lemma())}\n")
+            f.write(f"\t\t\t\t\t</p>\n")
+            f.write(f"\t\t\t\t\t<p>\n")
+            f.write(f"\t\t\t\t\t\t<b>Value of upper bound:</b>\n")
+            f.write(f"\t\t\t\t\t</p>\n")
+            f.write(f"\t\t\t\t\t<p>\n")
+            f.write(f"\t\t\t\t\t\t${str(cell.get_ub_str())}$\n")
             f.write(f"\t\t\t\t\t</p>\n")
             f.write(f"<hr />\n")
             f.write(f"\t\t\t\t\t<p>\n")
@@ -206,8 +219,19 @@ def _save_html_cards(settings, table: List[Cell]) -> None:
 
     f.write(f"\t\t</tbody>")
     f.write(f"\t\t</table>\n")
+    f.write(f"\t\t<div class=\"p-2 bg-danger text-white\"><p>No results returned.</p></div>\n")
 
-    f.write(f"\t\t<script>new ClipboardJS('.btn');</script>")
+
+    f.write(f"\t\t<script>new ClipboardJS('.btn');</script>\n")
+    f.write(f"\t\t<script>\n")
+    f.write(f"\t\t\tfilter = document.getElementById(\"filter\");\n")
+    f.write(f"\t\t\tfilter.onchange = function() {{\n")
+    f.write(f"\t\t\tfilter = document.getElementById(\"filter\");\n")
+    f.write(f"\t\t\tvar els = document.getElementsByClassName(\"container-fluid\");\n")
+    f.write(f"\t\t\tfor(var i = 0; i < els.length; i++)\n")
+    f.write(f"\t\t\tif (els[i].children[0].children[0].children[1].children[2].innerText.startsWith(filter.value)) {{ els[i].parentElement.parentElement.style.display = \"table-row\"; }} \nelse {{ els[i].parentElement.parentElement.style.display = \"none\"; }}\n")
+    f.write(f"}}\n")
+    f.write(f"\t\t</script>\n")
     f.write(f"\t</body>\n")
     f.write(f"</html>\n")
 
@@ -226,7 +250,7 @@ def _plot_cell(settings, filename: str, cell: Cell) -> None:
     xs = np.linspace(settings["alpha-pos-lb"], settings["alpha-pos-ub"], 100)
 
     plt.plot([x for x in xs], [cell.get_lb_fn()(x) for x in xs], color="green")
-    plt.plot([x for x in xs], [cell.get_ub_fn()(x) for x in xs], color="cyan")
+    plt.plot([x for x in xs], [cell.get_ub_fn()(x) for x in xs], color="blue")
 
     plt.tight_layout()
 

@@ -1,8 +1,10 @@
 {
     "alpha-pos-lb": 0.3080,
     "alpha-pos-ub": 0.3235,
-    "exploration-depth": 9,
     "conjectures": [1],
-    "ub-assumes-wait": true,
+    "continue-from-known-states": false,
+    "display-known-states": true,
+    "exploration-depth": 5,
+    "recurse": true,
     "visualization": "cards"
 }

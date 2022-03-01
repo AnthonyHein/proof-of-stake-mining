@@ -11,7 +11,7 @@ known_states: dict[State, KnownState] = {
     },
 
     State(("A", "A",) ): {
-        "value_str": "\\big( 2 + (\\tfrac{\\alpha}{1 - 2\\alpha}) \\big)(1 - \\alpha)",
+        "value_str": "\\big( 2 + (\\tfrac{\\alpha}{1 - 2\\alpha}) \\big)(1 - \\lambda)",
         "value_fn": dill.dumps(lambda alpha: (2 + (alpha / (1 - 2 * alpha))) * (1 - alpha)),
     },
 
