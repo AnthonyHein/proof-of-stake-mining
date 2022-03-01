@@ -1,7 +1,0 @@
-{
-    "alpha-pos-lb": 0.3080,
-    "alpha-pos-ub": 0.3277,
-    "exploration-depth": 10,
-    "conjectures": [1],
-    "ub-assumes-wait": false
-}

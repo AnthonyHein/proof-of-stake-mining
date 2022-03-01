@@ -9,7 +9,8 @@ REQUIRED_KEYS = {
     "alpha-pos-ub": lambda x: isinstance(x, float),
     "exploration-depth": lambda x: isinstance(x, int),
     "conjectures": lambda xs: isinstance(xs, list) and all([isinstance(x, int) for x in xs]),
-    "ub-assumes-wait": lambda x: isinstance(x, bool) 
+    "ub-assumes-wait": lambda x: isinstance(x, bool),
+    "visualization": lambda x: isinstance(x, str) and x in ["csv", "table", "cards"],
 }
 
 def main():

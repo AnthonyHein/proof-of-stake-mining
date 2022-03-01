@@ -64,6 +64,10 @@ class FarthestRecoveryPublish(Lemma):
                 curr_run = 0
                 curr_deficit += 1
 
+        if curr_run > 0:
+            deficits.append(max(curr_deficit - len(attacker_blocks_above_longest_chain), 0))
+            runs.append(curr_run)
+
         recovered_blocks = sum([runs[i] if deficits[i] <= len(attacker_blocks_above_longest_chain) else 0 for i in range(len(deficits))])
         recovered_deficit = max([deficit - 1 if deficit <= len(attacker_blocks_above_longest_chain) else 0 for deficit in deficits])
         excess_blocks = len(attacker_blocks_above_longest_chain) - recovered_deficit
