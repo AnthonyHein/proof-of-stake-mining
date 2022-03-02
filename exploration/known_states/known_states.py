@@ -41,8 +41,8 @@ known_states: dict[State, KnownState] = {
     },
 
     State(("A", "H", "H", "H", "H", "A","A",)): {
-        "value_str": "\\tfrac{\\alpha^2}{1 - \\alpha + \\alpha^2}\\bigg(3 + (\\tfrac{2}{1 - \\alpha + \\alpha^2} + 2)/2 \\bigg)(1-\\alpha) + \\tfrac{1- \\alpha}{1 - \\alpha + \\alpha^2}\\bigg( \\big( 2 + (\\tfrac{1 + \\alpha - \\alpha^2}{1 - \\alpha + \\alpha^2} - 1)/2 \\big)(1 - \\alpha) - 4\\alpha \\bigg) - 4\\alpha",
-        "value_fn": dill.dumps(lambda alpha: (alpha ** 2) / (1 - alpha + alpha ** 2) * (3 + (2 / (1 - alpha + alpha ** 2) + 2)/2 ) * (1- alpha) + (1- alpha) / (1 - alpha + alpha ** 2) * ( ( 2 + ( (1 + alpha - alpha ** 2) / (1 - alpha + alpha ** 2) - 1)/2 ) * (1 - alpha) - 4 * alpha ) - 4 * alpha),
+        "value_str": "\\tfrac{\\alpha^2}{1 - \\alpha + \\alpha^2}(4\\alpha) + \\tfrac{\\alpha^2}{1 - \\alpha + \\alpha^2}\\bigg(3 + (\\tfrac{2}{1 - \\alpha + \\alpha^2} + 2)/2 \\bigg)(1-\\alpha) + \\tfrac{1- \\alpha}{1 - \\alpha + \\alpha^2}\\bigg( \\big( 2 + (\\tfrac{1 + \\alpha - \\alpha^2}{1 - \\alpha + \\alpha^2} - 1)/2 \\big)(1 - \\alpha)\\bigg)",
+        "value_fn": dill.dumps(lambda alpha: (alpha ** 2) / (1 - alpha + alpha ** 2) * (4 * alpha) + (alpha ** 2) / (1 - alpha + alpha ** 2) * (3 + (2 / (1 - alpha + alpha ** 2) + 2)/2 ) * (1- alpha) + (1- alpha) / (1 - alpha + alpha ** 2) * ( ( 2 + ( (1 + alpha - alpha ** 2) / (1 - alpha + alpha ** 2) - 1)/2 ) * (1 - alpha))),
     },
 
     State(("A", "H", "H", "H", "H", "A", "H", "A",)): {

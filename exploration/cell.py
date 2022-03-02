@@ -112,7 +112,7 @@ class Cell:
             cell_next_a = table[int(state_next_a)]
             cell_next_h = table[int(state_next_h)]
 
-            cell_wait_lb_lemma = " wait then<ul><li>if next block is A" + cell_next_a.get_lb_lemma() + "</li><li>if next block is H" + cell_next_h.get_lb_lemma() + "</li></ul>"
+            cell_wait_lb_lemma = " wait then<ul><li>if next block is A then " + cell_next_a.get_lb_lemma() + "</li><li>if next block is H then " + cell_next_h.get_lb_lemma() + "</li></ul>"
             cell_wait_lb_str = "\\alpha\\bigg(" + cell_next_a.get_lb_str() + "\\bigg) + (1 - \\alpha)\\bigg(" + cell_next_h.get_lb_str() + " - \\lambda\\bigg)"
             cell_wait_lb_fn = lambda alpha: alpha * cell_next_a.get_lb_fn()(alpha) + (1  - alpha) * (cell_next_h.get_lb_fn()(alpha) - alpha)
 
@@ -168,7 +168,7 @@ class Cell:
             cell_next_a = table[int(state_next_a)]
             cell_next_h = table[int(state_next_h)]
 
-            cell_wait_ub_lemma = " wait then<ul><li>if next block is A" + cell_next_a.get_ub_lemma() + "</li><li>if next block is H" + cell_next_h.get_ub_lemma() + "</li></ul>"
+            cell_wait_ub_lemma = " wait then<ul><li>if next block is A then " + cell_next_a.get_ub_lemma() + "</li><li>if next block is H then " + cell_next_h.get_ub_lemma() + "</li></ul>"
             cell_wait_ub_str = "\\alpha\\bigg(" + cell_next_a.get_ub_str() + "\\bigg) + (1 - \\alpha)\\bigg(" + cell_next_h.get_ub_str() + " - \\lambda\\bigg)"
             cell_wait_ub_fn = lambda alpha: alpha * cell_next_a.get_ub_fn()(alpha) + (1  - alpha) * (cell_next_h.get_ub_fn()(alpha) - alpha)
 
