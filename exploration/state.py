@@ -3,100 +3,163 @@ from typing import List, Tuple
 
 class State:
 
-    def __init__(self, sequence: Tuple[str, ...] = (), capacity: int = None) -> None:
+    def __init__(self,
+                 sequence: Tuple[str, ...] = None,
+                 longest_path: Tuple[int, ...] = None,
+                 unpublished_blocks: Tuple[int, ...] =  None) -> None:
         """
         Initializes the state that results from mining sequence `sequence`
-        where the honest miner plays \textsc{Frontier} and the attacker has
-        not published any blocks.
+        with current longest path `longest_path` and unpublished blocks
+        owned by the attacker `unpublished_blocks`. Note that `sequence`,
+        `unpublished_blocks,` and `longest_path` fully determine the state
+        of the game given the fixed strategy of the honest miner.
         """
 
-        if sequence is None or not isinstance(sequence, Tuple):
-            print(f"State.__init__: argument `sequence` to `__init__()` is not a list, with value {sequence}")
+        if sequence is None and (longest_path is not None or unpublished_blocks is not None):
+            print(f"State.__init__: may not specify `longest_path` or `unpublished_blocks` without specifying `sequence`")
             sys.exit(1)
-        if not all(miner in ['A', 'H'] for miner in sequence):
+
+        if sequence is not None and not isinstance(sequence, Tuple):
+            print(f"State.__init__: argument `sequence` to `__init__()` is not a tuple, with value {sequence}")
+            sys.exit(1)
+        if sequence is not None and not all(miner in ['A', 'H'] for miner in sequence):
             print(f"State.__init__: argument `sequence` to `__init__()` has an invalid miner, with value {sequence}")
             sys.exit(1)
-        if capacity is not None and not isinstance(capacity, int):
-            print(f"State.__init__: argument `capacity` to `__init__()` is invalid, with value {capacity}")
+
+        if sequence is None:
+            sequence = ()
+
+        if (longest_path is None and unpublished_blocks is not None) or (longest_path is not None and unpublished_blocks is None):
+            print(f"State.__init__: may not specify exactly one of `longest_path` and `unpublished_blocks`")
             sys.exit(1)
-        if capacity is not None and len(sequence) > capacity:
-            print(f"State.__init__: argument `sequence` {sequence} exceeds `capacity` {capacity}")
+
+        if longest_path is not None and not isinstance(longest_path, Tuple):
+            print(f"State.__init__: argument `longest_path` to `__init__()` is not a tuple, with value {longest_path}")
+            sys.exit(1)
+        if longest_path is not None and not all(isinstance(block, int) for block in longest_path):
+            print(f"State.__init__: argument `longest_path` to `__init__()` has an invalid block, with value {longest_path}")
+            sys.exit(1)
+
+        if unpublished_blocks is not None and not isinstance(unpublished_blocks, Tuple):
+            print(f"State.__init__: argument `unpublished_blocks` to `__init__()` is not a tuple, with value {unpublished_blocks}")
+            sys.exit(1)
+        if unpublished_blocks is not None and not all(isinstance(block, int) for block in unpublished_blocks):
+            print(f"State.__init__: argument `unpublished_blocks` to `__init__()` has an invalid block, with value {unpublished_blocks}")
+            sys.exit(1)
+
+        if longest_path is None:
+            longest_path = tuple([0] + [i + 1 for i, v in enumerate(sequence) if v == 'H'])
+
+        if unpublished_blocks is None:
+            unpublished_blocks = tuple([i + 1 for i, v in enumerate(sequence) if v == 'A'])
+
+        if not all(block <= len(sequence) for block in longest_path):
+            print(f"State.__init__: block in `longest_path` {longest_path} has timestamp greater than sequence {sequence}")
+            sys.exit(1)
+
+        if not all(block <= len(sequence) for block in unpublished_blocks):
+            print(f"State.__init__: block in `unpublished_blocks` {unpublished_blocks} has timestamp greater than sequence {sequence}")
+            sys.exit(1)
+
+        if set(unpublished_blocks).intersection(set(longest_path)) != set():
+            print(f"State.__init__: intersection between `unpublished_blocks` {unpublished_blocks} and `longest_path` {longest_path} is non-empty")
             sys.exit(1)
 
         self.sequence = sequence
-
-        if capacity is None:
-            capacity = len(sequence)
-
-        self.capacity = capacity
-
-        self.id = pow(2, len(sequence)) - 1 + sum([int(sequence[i] == 'A') * pow(2, len(self.sequence) - i - 1) if i < len(sequence) else 0 for i in range(capacity)])
+        self.longest_path = longest_path
+        self.unpublished_blocks = unpublished_blocks
 
     def next_state_attacker(self) -> 'State':
         """"
         Get the state that follows `self` when the next miner is the attacker.
         """
-        return State(tuple(list(self.sequence) + ['A']), max(self.capacity, len(self.sequence) + 1))
+        return State(
+            sequence=tuple(list(self.sequence) + ['A']),
+            longest_path=self.longest_path,
+            unpublished_blocks=tuple(list(self.unpublished_blocks) + [len(self.sequence) + 1])
+        )
 
     def next_state_honest_miner(self) -> 'State':
         """"
         Get the state that follows `self` when the next miner is the honest
         participant.
         """
-        return State(tuple(list(self.sequence) + ['H']), max(self.capacity, len(self.sequence) + 1))
+        return State(
+            sequence=tuple(list(self.sequence) + ['H']),
+            longest_path=tuple(list(self.longest_path) + [len(self.sequence) + 1]),
+            unpublished_blocks=self.unpublished_blocks
+        )
 
-    def get_attacker_blocks(self) -> List[int]:
-        """"
-        Get the list of all blocks mined by the attacker at this state.
+    def next_state_from_action(self, k: int, v: int) -> 'State':
         """
-        return [i for i, v in enumerate(self.sequence) if v == 'A']
-
-    def get_honest_miner_blocks(self) -> List[int]:
-        """"
-        Get the list of all blocks mined by the honest miner at this state.
+        Get the state that follows action Publish(k, v), as defined
+        in the paper. Since an optimal strategy is timeserving w.l.o.g., all
+        actions that will ever be taken can be represented as such.
         """
-        return [i for i, v in enumerate(self.sequence) if v == 'H']
+        if k is None or v is None:
+            print(f"State.next_state_from_action: one or more arguments are `None`")
+            sys.exit(1)
+        if not isinstance(k, int):
+            print(f"State.next_state_from_action: argument `k` is not a valid number of blocks with value {k}")
+            sys.exit(1)
+        if not isinstance(v, int):
+            print(f"State.next_state_from_action: argument `v` is not a valid block with value {v}")
+            sys.exit(1)
 
-    def get_longest_path(self) -> List[int]:
+        if len(list(filter(lambda x: x > v, self.unpublished_blocks))) < k:
+            print(f"State.next_state_from_action: argument `k` with value {k} exceeds the number of unpublished blocks in {self.unpublished_blocks} that may be published on {v}")
+            sys.exit(1)
+        if v not in self.longest_path:
+            print(f"State.next_state_from_action: argument `v` with value {v} is not in the longest path {self.longest_path}")
+            sys.exit(1)
+        if len(list(filter(lambda x: x > v, self.longest_path))) > k:
+            print(f"State.next_state_from_action: argument `k` with value {k} is not large enough such that the action is timeserving for longest path {self.longest_path}")
+            sys.exit(1)
+
+        blocks = list(filter(lambda x: x > v, self.unpublished_blocks))[:k]
+
+        return State(
+            sequence=self.sequence,
+            longest_path=tuple(list(filter(lambda x: x <= v, self.longest_path)) + blocks),
+            unpublished_blocks=tuple(set(self.unpublished_blocks).difference(set(blocks)))
+        )
+
+    def next_state_from_capitulation(self, genesis: int) -> 'State':
         """
-        Get the list of blocks in the longest chain at this state, which is
-        just the list of honest miner blocks by assumption.
+        Get the state that follows a miner's capitulation where they now view
+        the block `genesis` as the genesis block, meaning that all blocks with
+        timestamp less than this timestamp are forgotten.       
         """
-        return self.get_honest_miner_blocks()
+        if genesis is None or not isinstance(genesis, int):
+            print(f"State.next_state_from_capitulation: argument `genesis` is not a valid block with value {genesis}")
+            sys.exit(1)
+        if genesis not in self.longest_path:
+            print(f"State.next_state_from_capitulation: argument `genesis` with value {genesis} is not in the longest path {self.longest_path}")
+            sys.exit(1)
 
-    def get_height_of_longest_chain(self) -> int:
+        return State(
+            sequence=tuple(list(self.sequence)[genesis:]),
+            longest_path=tuple([block - genesis for block in self.longest_path if block >= genesis]),
+            unpublished_blocks=tuple([block - genesis for block in self.unpublished_blocks if block >= genesis]),
+        )
+
+    def get_sequence(self) -> Tuple[str, ...]:
         """
-        Get the height of the longest chain, which is just the number of
-        blocks in the longest path.
+        Get the mining sequence at this state.
         """
-        return len(self.get_longest_path())
+        return self.sequence
 
-    def get_heights_attacker_blocks_can_reach(self) -> List[int]:
+    def get_longest_path(self) -> Tuple[int, ...]:
         """
-        Get the heights that the blocks owned by the attacker can reach. For
-        any attacker block, this is the maximum of
-        * the number of honest miner blocks which are less than this block plus one
-        * and, the height of the most previous attacker block plus one
+        Get the list of blocks in the longest path at this state.
         """
-        attacker_blocks = self.get_attacker_blocks()
-        honest_miner_blocks = self.get_honest_miner_blocks()
+        return self.longest_path
 
-        heights_attacker_blocks_can_reach = []
-
-        prev_attacker_block_height = 0
-
-        for attacker_block in attacker_blocks:
-
-            curr_attacker_block_height = max(
-                sum([honest_miner_block < attacker_block for honest_miner_block in honest_miner_blocks]) + 1,
-                prev_attacker_block_height + 1,
-            )
-
-            prev_attacker_block_height = curr_attacker_block_height
-
-            heights_attacker_blocks_can_reach.append(curr_attacker_block_height)
-        
-        return heights_attacker_blocks_can_reach
+    def get_unpublished_blocks(self) -> Tuple[int, ...]:
+        """
+        Get the list of unpublished blocks at this state.
+        """
+        return self.unpublished_blocks
 
     def __len__(self) -> int:
         """
@@ -104,115 +167,105 @@ class State:
         """
         return len(self.sequence)
 
-    def __int__(self) -> int:
-        """
-        Get the natural number which corresponds to this state, where the state
-        is treated as a bitstring with the last miner the lowest-order bit, an
-        'A' represents a '1', and an 'H' represents a '0'.
-        """
-        return self.id
-
     def __eq__(self, other: 'State') -> bool:
         """
         Return `True` if two states are equal and false otherwise.
         """
-        return self.sequence == other.sequence
+        return self.sequence == other.sequence and \
+               self.longest_path == other.longest_path and \
+               self.unpublished_blocks == other.unpublished_blocks
 
     def __hash__(self):
-        return hash(self.sequence)
+        return hash((self.sequence, self.longest_path, self.unpublished_blocks))
 
     def __str__(self) -> str:
         """
         Return a human readable string summarizing a state.
         """
 
+        if len(self.sequence) == 0:
+            return "genesis"
+
         s = ""
 
-        c = None
+        # Sequence ------------------------------------------------------------
+
+        ch = None
         run = 0
 
         for miner in self.sequence:
 
-            if c is not None and c == miner:
+            if ch is not None and ch == miner:
                 run += 1
             else:
-                s += f"{run if run != 1 else ''}{c}, " if c is not None else ""
-                c = miner
+                s += f"{run if run != 1 else ''}{ch}, " if ch is not None else ""
+                ch = miner
                 run = 1
         
-        s += f"{run if run != 1 else ''}{c} " if c is not None else ""
+        s += f"{run if run != 1 else ''}{ch} " if ch is not None else ""
 
-        return f"({s.rstrip(', ')})" if len(self.sequence) > 0 else "Genesis"
+        s = f"({s.rstrip(', ')})"
+
+        # Longest Path and Unpublished Blocks ---------------------------------
+
+        honest_blocks = [i + 1 for i, v in enumerate(self.sequence) if v == 'H']
+
+        if list(self.longest_path) != [0] + honest_blocks:
+            s += f", Longest Path: {str(self.longest_path)}"
+            s += f", Unpublished Blocks: {str(self.unpublished_blocks)}"
+        
+        # ---------------------------------------------------------------------
+
+        return s
 
     def __repr__(self) -> str:
         """
         Return a string which can be used to reconstruct the state.
         """
-        return f"State(sequence={self.sequence}, capacity={self.capacity})"
+        return f"State(\n\tsequence={self.sequence},\n\tlongest_path={self.longest_path},\n\tunpublished_blocks={self.unpublished_blocks},\n)"
 
 def main():
 
-    print("__str__()")
-    print(State())
-    print(State().next_state_attacker().next_state_attacker())
-    print(State().next_state_attacker().next_state_honest_miner())
-    print(State().next_state_honest_miner().next_state_attacker())
-    print(State().next_state_honest_miner().next_state_honest_miner())
+    def aux(n: int, state: State):
+
+        if len(state) == n:
+            print("str: " + str(state))
+            print("repr:\n" + repr(state))
+            print("next_state_attacker: " + str(state.next_state_attacker()))
+            print("next_state_honest_miner: " + str(state.next_state_honest_miner()))
+            print("get_sequence: " + str(state.get_sequence()))
+            print("get_longest_path: " + str(state.get_longest_path()))
+            print("get_unpublished_blocks: " + str(state.get_unpublished_blocks()))
+            print()
+            return
+
+        aux(n, state.next_state_attacker())
+        aux(n, state.next_state_honest_miner())
+
+    aux(3, State())
+
+    state = State().next_state_honest_miner().next_state_honest_miner().next_state_attacker().next_state_attacker().next_state_from_action(2,1)
+    print(state)
     print()
-    print("__repr__()")
-    print(repr(State()))
-    print(repr(State().next_state_attacker().next_state_attacker()))
-    print(repr(State().next_state_attacker().next_state_honest_miner()))
-    print(repr(State().next_state_honest_miner().next_state_attacker()))
-    print(repr(State().next_state_honest_miner().next_state_honest_miner()))
+
+    state = State().next_state_attacker().next_state_attacker().next_state_honest_miner().next_state_from_action(2,0)
+    print(state)
     print()
-    print("get_attacker_blocks()")
-    print(State().get_attacker_blocks())
-    print(State().next_state_attacker().next_state_attacker().get_attacker_blocks())
-    print(State().next_state_attacker().next_state_honest_miner().get_attacker_blocks())
-    print(State().next_state_honest_miner().next_state_attacker().get_attacker_blocks())
-    print(State().next_state_honest_miner().next_state_honest_miner().get_attacker_blocks())
+
+    state = State(sequence=('A', 'H', 'H', 'A', 'H', 'H', 'A')).next_state_from_action(1, 6)
+    print(state)
     print()
-    print("get_honest_miner_blocks()")
-    print(State().get_honest_miner_blocks())
-    print(State().next_state_attacker().next_state_attacker().get_honest_miner_blocks())
-    print(State().next_state_attacker().next_state_honest_miner().get_honest_miner_blocks())
-    print(State().next_state_honest_miner().next_state_attacker().get_honest_miner_blocks())
-    print(State().next_state_honest_miner().next_state_honest_miner().get_honest_miner_blocks())
+
+    state = State().next_state_honest_miner().next_state_honest_miner().next_state_attacker().next_state_attacker().next_state_from_capitulation(2)
+    print(state)
     print()
-    print("get_height_of_longest_chain()")
-    print(State().get_height_of_longest_chain())
-    print(State().next_state_attacker().next_state_attacker().get_height_of_longest_chain())
-    print(State().next_state_attacker().next_state_honest_miner().get_height_of_longest_chain())
-    print(State().next_state_honest_miner().next_state_attacker().get_height_of_longest_chain())
-    print(State().next_state_honest_miner().next_state_honest_miner().get_height_of_longest_chain())
+
+    state = State().next_state_attacker().next_state_attacker().next_state_honest_miner().next_state_from_capitulation(3)
+    print(state)
     print()
-    print("get_heights_attacker_blocks_can_reach()")
-    print(State().get_heights_attacker_blocks_can_reach())
-    print(State().next_state_attacker().next_state_attacker().get_heights_attacker_blocks_can_reach())
-    print(State().next_state_attacker().next_state_honest_miner().get_heights_attacker_blocks_can_reach())
-    print(State().next_state_honest_miner().next_state_attacker().get_heights_attacker_blocks_can_reach())
-    print(State().next_state_honest_miner().next_state_honest_miner().get_heights_attacker_blocks_can_reach())
-    print()
-    print("__len__()")
-    print(len(State()))
-    print(len(State().next_state_attacker().next_state_attacker()))
-    print(len(State().next_state_attacker().next_state_honest_miner()))
-    print(len(State().next_state_honest_miner().next_state_attacker()))
-    print(len(State().next_state_honest_miner().next_state_honest_miner()))
-    print()
-    print("__int__()")
-    print(int(State()))
-    print(int(State().next_state_attacker().next_state_attacker()))
-    print(int(State().next_state_attacker().next_state_honest_miner()))
-    print(int(State().next_state_honest_miner().next_state_attacker()))
-    print(int(State().next_state_honest_miner().next_state_honest_miner()))
-    print()
-    print(int(State(capacity=3)))
-    print(int(State(capacity=3).next_state_attacker().next_state_attacker()))
-    print(int(State(capacity=3).next_state_attacker().next_state_honest_miner()))
-    print(int(State(capacity=3).next_state_honest_miner().next_state_attacker()))
-    print(int(State(capacity=3).next_state_honest_miner().next_state_honest_miner()))
+
+    state = State(sequence=('A', 'H', 'H', 'A', 'H', 'H', 'A')).next_state_from_capitulation(5)
+    print(state)
     print()
 
 if __name__ == "__main__":

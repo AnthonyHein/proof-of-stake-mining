@@ -1,6 +1,3 @@
-from functools import partial
-from typing import Callable
-
 import sympy as sp
 
 from block import Block
@@ -66,7 +63,6 @@ def mining_game_reward_fixed_rev(start: State, end: State, rev: float) -> float:
     return (1 - rev) * miner_k_reward(Miner.ATTACKER, start, end) - \
            rev * miner_k_reward(Miner.HONEST, start, end)
 
-
 def mining_game_reward_expr(start: State, end: State) -> sp.core.add.Add:
     """
     Given a `start` state and an `end` state, calculate the real-valued mining
@@ -78,7 +74,7 @@ def mining_game_reward_expr(start: State, end: State) -> sp.core.add.Add:
 
     if not isinstance(start, State):
         raise TypeError("state_utils.mining_game_reward_expr: `start` must be of type `State`")
-    if not isinstance(start, State):
+    if not isinstance(end, State):
         raise TypeError("state_utils.mining_game_reward_expr: `end` must be of type `State`")
 
     rev = sp.symbols('rev')
@@ -91,7 +87,6 @@ def mining_game_reward_val(start: State, end: State) -> float:
     game reward as value of `rev` that makes the following equation true:
         (1 - rev)(Miner.ATTACKER reward) + (- rev)(Miner.HONEST reward) = 0
     """
-
     
     if not isinstance(start, State):
         raise TypeError("state_utils.mining_game_reward_val: `start` must be of type `State`")

@@ -75,7 +75,7 @@ def _save_html_table(settings, table: List[Cell]) -> None:
     f.write(f"\t\t<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css\">\n")
     f.write(f"\t\t<script src=\"https://cdn.jsdelivr.net/npm/clipboard@2.0.10/dist/clipboard.min.js\"></script>\n")
     f.write(f"\t\t<script type=\"text/x-mathjax-config\">MathJax.Hub.Config({{tex2jax: {{inlineMath: [['$','$']]}}}});</script>\n")
-    f.write(f"\t\t<script type=\"text/javascript\" src=\"http://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML\"></script>\n")
+    f.write(f"\t\t<script type=\"text/javascript\" src=\"https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML\"></script>\n")
     f.write(f"\t</head>\n")
     f.write(f"\t<body>\n")
 
@@ -140,7 +140,7 @@ def _save_html_cards(settings, table: List[Cell]) -> None:
     f.write(f"\t\t<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css\">\n")
     f.write(f"\t\t<script src=\"https://cdn.jsdelivr.net/npm/clipboard@2.0.10/dist/clipboard.min.js\"></script>\n")
     f.write(f"\t\t<script type=\"text/x-mathjax-config\">MathJax.Hub.Config({{tex2jax: {{inlineMath: [['$','$']]}}}});</script>\n")
-    f.write(f"\t\t<script type=\"text/javascript\" src=\"http://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML\"></script>\n")
+    f.write(f"\t\t<script type=\"text/javascript\" src=\"https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML\"></script>\n")
     f.write(f"\t</head>\n")
     f.write(f"\t<body>\n")
 
