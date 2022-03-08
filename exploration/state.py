@@ -66,6 +66,8 @@ class State:
             sys.exit(1)
 
         self.sequence = sequence
+        self.attacker_blocks: Tuple[int, ...] = tuple([i + 1 for i, v in enumerate(self.sequence) if v == 'A'])
+        self.honest_miner_blocks: Tuple[int, ...] = tuple([i + 1 for i, v in enumerate(self.sequence) if v == 'H'])
         self.longest_path = longest_path
         self.unpublished_blocks = unpublished_blocks
 
@@ -149,6 +151,18 @@ class State:
         """
         return self.sequence
 
+    def get_attacker_blocks(self) -> Tuple[int, ...]:
+        """"
+        Get the list of all blocks mined by the attacker at this state.
+        """
+        return self.attacker_blocks
+
+    def get_honest_miner_blocks(self) -> Tuple[int, ...]:
+        """"
+        Get the list of all blocks mined by the honest miner at this state.
+        """
+        return self.honest_miner_blocks
+
     def get_longest_path(self) -> Tuple[int, ...]:
         """
         Get the list of blocks in the longest path at this state.
@@ -176,6 +190,9 @@ class State:
                self.unpublished_blocks == other.unpublished_blocks
 
     def __hash__(self):
+        """
+        Return a hash value of a state.
+        """
         return hash((self.sequence, self.longest_path, self.unpublished_blocks))
 
     def __str__(self) -> str:

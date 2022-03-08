@@ -1,5 +1,6 @@
+import sympy as sp
 from typing import TypedDict
 
 class KnownState(TypedDict):
-    value_str: str
-    value_fn: str
+    lower_bound: sp.core.Expr
+    upper_bound: sp.core.Expr

@@ -3,24 +3,13 @@ import sys
 from typing import List, Tuple
 
 from state import State
-
-def get_attacker_blocks(state: State) -> List[int]:
-    """"
-    Get the list of all blocks mined by the attacker at this state.
-    """
-    return tuple([i + 1 for i, v in enumerate(state.get_sequence()) if v == 'A'])
-
-def get_honest_miner_blocks(state: State) -> List[int]:
-    """"
-    Get the list of all blocks mined by the honest miner at this state.
-    """
-    return tuple([i + 1 for i, v in enumerate(state.get_sequence()) if v == 'H'])
+from symbols import *
 
 def get_checkpoints(state: State) -> List[int]:
     """
     Get a list of all checkpoints in state `state`.
     """
-    attacker_blocks = get_attacker_blocks(state)
+    attacker_blocks = state.get_attacker_blocks()
 
     checkpoints = [0]
 
@@ -68,19 +57,17 @@ def get_reward_between_states(start: State, end: State) -> sp.core.add.Add:
         print(f"state_utils.get_reward_between_states: `end` must be of type `State`")
         sys.exit(1)
 
-    attacker_blocks_start = get_attacker_blocks(start)
-    attacker_blocks_end = get_attacker_blocks(end)
+    attacker_blocks_start = start.get_attacker_blocks()
+    attacker_blocks_end = end.get_attacker_blocks()
 
-    honest_miner_blocks_start = get_honest_miner_blocks(start)
-    honest_miner_blocks_end = get_honest_miner_blocks(end)
+    honest_miner_blocks_start = start.get_honest_miner_blocks()
+    honest_miner_blocks_end = end.get_honest_miner_blocks()
 
     delta_attacker_blocks_in_longest_path = len(list(filter(lambda x: x in attacker_blocks_end, end.get_longest_path()))) - \
                                             len(list(filter(lambda x: x in attacker_blocks_start, start.get_longest_path())))
 
     delta_honest_miner_blocks_in_longest_path = len(list(filter(lambda x: x in honest_miner_blocks_end, end.get_longest_path()))) - \
                                                 len(list(filter(lambda x: x in honest_miner_blocks_start, start.get_longest_path())))
-
-    lamba = sp.symbols('lambda')
 
     return (1 - lamba) * delta_attacker_blocks_in_longest_path - lamba * delta_honest_miner_blocks_in_longest_path
 
@@ -115,7 +102,7 @@ def _get_timeserving_orderly_lcm_trimmed_actions(state: State) -> List[Tuple[int
     available action.
     """
 
-    attacker_blocks = get_attacker_blocks(state)
+    attacker_blocks = state.get_attacker_blocks()
     longest_path = state.get_longest_path()
     unpublised_blocks = state.get_unpublished_blocks()
 
@@ -240,14 +227,21 @@ def _get_elevated_actions(state: State,
 
     return available_actions_establish_checkpoint_and_elevated
 
+def get_subsequent_states(state: State) -> List[State]:
+    """
+    Get all states which may follow a state, where these states are those reached
+    by valid actions as defined above.
+    """
+    return [state.next_state_from_action(*action) for action in get_available_actions(state)]
+
 def main():
 
     def aux(n: int, state: State):
 
         if len(state) == n:
             print(state)
-            print("get_attacker_blocks: " + str(get_attacker_blocks(state)))
-            print("get_honest_miner_blocks: " + str(get_honest_miner_blocks(state)))
+            print("get_attacker_blocks: " + str(state.get_attacker_blocks()))
+            print("get_honest_miner_blocks: " + str(state.get_honest_miner_blocks()))
             print("get_heights_unpublished_blocks_can_reach: " + str(get_heights_unpublished_blocks_can_reach(state)))
             print()
             return

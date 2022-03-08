@@ -1,82 +1,70 @@
-from typing import Callable, List, Tuple, Union
+import sympy as sp
+from typing import Optional
 
-from conjectures.conjecture import Conjecture
+from bound import LemmaLowerBound, LemmaUpperBound
 from lemmas.lemma import Lemma
+from settings.setting import Setting
 from state import State
+from state_utils import *
 
-
-DESCRIPTION = \
-"""
-The value of a state is zero if there are so many consecutive honest miner blocks that the
-attacker would prefer to selfish mine over their lead rather than recover attacker blocks
-even if presented the chance to do so.
-"""
+# The value of a state is zero if there are so many consecutive honest miner blocks that the
+# attacker would prefer to selfish mine over their lead rather than recover attacker blocks
+# even if presented the chance to do so.
 
 class NonCheckpointFinality(Lemma):
 
     @staticmethod
-    def get_name():
+    def get_name() -> str:
         """
         Return the name of the lemma.
         """
         return "Non Checkpoint Finality"
 
     @staticmethod
-    def get_description():
-        """
-        Return a description of the lemma.
-        """
-        return DESCRIPTION
-
-    @staticmethod
-    def lower_bound(state: State,
-                    settings: dict[str, object],
-                    conjectures: List[Conjecture]) -> Union[Tuple[str, Callable[[float], float]], None]:
+    def lower_bound(settings: Setting, state: State) -> Optional[LemmaLowerBound]:
         """
         Return the lower bound to the value of `state` that is achieved
-        by this lemma as a string formula and function of alpha, or `None`
-        if this lemma does not prove any such lower bound.
+        by this lemma as a function of alpha, or `None` if this lemma
+        does not prove any such lower bound.
         """
         return None
 
     @staticmethod
-    def upper_bound(state: State,
-                    settings: dict[str, object],
-                    conjectures: List[Conjecture]) -> Union[Tuple[str, Callable[[float], float]], None]:
+    def upper_bound(settings: Setting, state: State) -> Optional[LemmaUpperBound]:
         """
         Return the upper bound to the value of `state` that is achieved
-        by this lemma as a string formula and function of alpha, or `None`
-        if this lemma does not prove any such upper bound.
+        by this lemma as a function of alpha, or `None` if this lemma
+        does not prove any such upper bound.
         """
-
-        height_of_longest_chain = state.get_height_of_longest_chain()
-        heights_attacker_blocks_can_reach = state.get_heights_attacker_blocks_can_reach()
-
-        attacker_blocks_below_longest_chain = list(filter(lambda x: x <= height_of_longest_chain, heights_attacker_blocks_can_reach))
-        attacker_blocks_above_longest_chain = list(filter(lambda x: x > height_of_longest_chain, heights_attacker_blocks_can_reach))
-
-        if len(attacker_blocks_below_longest_chain) == 0:
+        if state.get_attacker_blocks() != state.get_unpublished_blocks():
             return None
 
-        if len(attacker_blocks_above_longest_chain) > 0:
+        height_of_longest_chain = len(state.get_longest_path())
+        heights_unpublished_blocks_can_reach = get_heights_unpublished_blocks_can_reach(state)
+
+        if len(heights_unpublished_blocks_can_reach) == 0 or \
+           max(heights_unpublished_blocks_can_reach) >= height_of_longest_chain:
             return None
 
-        x = height_of_longest_chain - (attacker_blocks_below_longest_chain[-1] - 1)
+        x = height_of_longest_chain - (heights_unpublished_blocks_can_reach[-1] - 1)
         
-        if x < len(attacker_blocks_below_longest_chain) - 2:
+        if x < len(heights_unpublished_blocks_can_reach) - 2:
             return None
 
-        non_consecutive_blocks = list(filter(lambda b: b - 1 not in attacker_blocks_below_longest_chain, attacker_blocks_below_longest_chain))
+        non_consecutive_block_heights = list(filter(lambda h: h - 1 not in heights_unpublished_blocks_can_reach, heights_unpublished_blocks_can_reach))
 
-        for non_consecutive_block in non_consecutive_blocks:
+        for non_consecutive_block_height in non_consecutive_block_heights:
             
-            size_if_publish = sum([b >= non_consecutive_block for b in attacker_blocks_below_longest_chain])
-            lead_if_not_publish = height_of_longest_chain - size_if_publish - (non_consecutive_block - 1)
+            size_if_publish = sum([b >= non_consecutive_block_height for b in heights_unpublished_blocks_can_reach])
+            lead_if_not_publish = height_of_longest_chain - size_if_publish - (non_consecutive_block_height - 1)
 
-            if (- size_if_publish + lead_if_not_publish * (settings["alpha-pos-lb"] / (1 - 2 * settings["alpha-pos-lb"]))) * (1 - settings["alpha-pos-lb"]) - height_of_longest_chain * settings["alpha-pos-lb"] < 0:
+            if (- size_if_publish + lead_if_not_publish * (settings["alpha_pos_lower_bound"] / (1 - 2 * settings["alpha_pos_lower_bound"]))) * (1 - settings["alpha_pos_lower_bound"]) - height_of_longest_chain * settings["alpha_pos_lower_bound"] < 0:
                 return None
 
-        return "0", lambda alpha: 0
+        return {
+            "lemma": NonCheckpointFinality.get_name(),
+            "upper_bound": sp.Integer(0),
+        }
 
     
 

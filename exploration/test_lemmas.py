@@ -1,52 +1,54 @@
 import json
 import os
+import sympy as sp
 import sys
+from typing import Optional
 
-from conjectures import conjectures
+from bound import *
 from lemmas import lemmas
 from state import State
 
 PATH_TO_SETTINGS_DIR = "settings/"
 
-ALPHA_POS_LB = 0.3080
-ALPHA_POS_UB = 0.3277
-
 def main():
 
     if len(sys.argv) != 2:
-        print(f"driver.main: python3 driver.py <settings filename>")
+        print(f"test_lemmas.main: python3 driver.py <settings filename>")
         sys.exit(1)
 
     filename = PATH_TO_SETTINGS_DIR + sys.argv[1]
 
     if not os.path.exists(filename):
-        print(f"driver.main: `{filename}` is not a valid settings file")
+        print(f"test_lemmas.main: `{filename}` is not a valid settings file")
         sys.exit(1)
 
     settings = json.load(open(filename))
-    cjctrs = list(filter(lambda x: x["id"] in settings["conjectures"], conjectures))
 
     state = State(('A', 'H', 'H', 'A', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',))
 
     for lemma in lemmas:
 
         print(lemma.get_name())
-        print(lemma.get_description())
         print()
-        
 
-        lb = lemma.lower_bound(state, cjctrs, settings["alpha-pos-lb"], settings["alpha-pos-ub"])
-        ub = lemma.upper_bound(state, cjctrs, settings["alpha-pos-lb"], settings["alpha-pos-ub"])
+        lower_bound: Optional[LemmaLowerBound] = lemma.lower_bound(settings, state)
+        upper_bound: Optional[LemmaUpperBound] = lemma.upper_bound(settings, state)
 
-        if lb is not None:
-            print(f"Lower bound to state {state}:")
-            print(lb[0])
-            print(lb[1](settings["alpha-pos-lb"]))
+        if lower_bound is not None:
+            if not bound_isinstance(lower_bound, LemmaLowerBound):
+                print(f"test_lemmas.main: lower_bound {lower_bound} is not of type `LemmaLowerBound`")
+                sys.exit(1)
 
-        if ub is not None:
-            print(f"Upper bound to state {state}:")
-            print(ub[0])
-            print(ub[1](settings["alpha-pos-lb"]))
+            print(f"Lower bound to state {state}:\n")
+            print(sp.latex(lower_bound['lower_bound']))
+
+        if upper_bound is not None:
+            if not bound_isinstance(upper_bound, LemmaUpperBound):
+                print(f"test_lemmas.main: upper_bound {upper_bound} is not of type `LemmaUpperBound`")
+                sys.exit(1)
+
+            print(f"Upper bound to state {state}:\n")
+            print(sp.latex(upper_bound['upper_bound']))
 
         print()
 
