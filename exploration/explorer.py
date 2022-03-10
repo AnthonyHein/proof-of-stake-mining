@@ -1,7 +1,9 @@
+from known_states import known_states
 from settings.setting import Setting
 from state import State
 from state_details import StateDetails
 from state_utils import *
+import time
 
 class Explorer:
 
@@ -13,18 +15,33 @@ class Explorer:
         self.lut: dict[State, StateDetails] = {}
         return
 
-    def explore(self) -> int:
+    def explore(self) -> None:
         """
         Explore the state space and, for each state, update `self.lut` with the
         most accurate `StateDetails` object possible. Return the number of
         states that were explored.
         """
+        start = time.time()
+
         x = self._explore_state(State())
 
-        while self._fine_tune():
-            continue
+        print(f"Explored {x} states in {int(time.time() - start)} seconds.")
 
-        return x
+        
+        while True:
+            start = time.time()
+            x = self._fine_tune()
+            print(f"Fine-tuned once in {int(time.time() - start)} seconds.")
+            
+            if x == 0:
+                break
+
+        if not self.settings["display_known_states"]:
+            for known_state in known_states:
+                if known_state in self.lut:
+                    self.lut.pop(known_state)
+
+        print("Done exploring.")
 
     def _explore_state(self, state: State) -> int:
         """
@@ -47,18 +64,20 @@ class Explorer:
 
         self.lut[state] = None
 
-        for subsequent_state in get_subsequent_states(state):
+        if state not in known_states or self.settings["continue_from_known_states"]:
+            for subsequent_state in get_subsequent_states(state):
 
-            checkpoints = get_checkpoints(subsequent_state)
+                checkpoints = get_checkpoints(subsequent_state)
 
-            if len(checkpoints) > 1:
-                subsequent_state = subsequent_state.next_state_from_capitulation(checkpoints[-1])
+                if len(checkpoints) > 1:
+                    subsequent_state = subsequent_state.next_state_from_capitulation(checkpoints[-1])
 
-            x += self._explore_state(subsequent_state.next_state_attacker())
-            x += self._explore_state(subsequent_state.next_state_honest_miner())
+                x += self._explore_state(subsequent_state.next_state_attacker())
+                x += self._explore_state(subsequent_state.next_state_honest_miner())
 
-        self.lut[state] = StateDetails(state, self.settings, self.lut)
-        x += 1
+        if len(state) == self.settings["exploration_depth"] or self.settings["recurse"]:
+            self.lut[state] = StateDetails(state, self.settings, self.lut)
+            x += 1
         
         return x
 

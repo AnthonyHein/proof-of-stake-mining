@@ -24,7 +24,7 @@ def main():
 
     settings = json.load(open(filename))
 
-    state = State(('A', 'H', 'H', 'A', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',))
+    state = State(('A', 'H', 'H'))
 
     for lemma in lemmas:
 

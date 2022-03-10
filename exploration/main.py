@@ -3,6 +3,7 @@ import os
 import sys
 
 from explorer import Explorer
+from saver import save
 
 PATH_TO_SETTINGS_DIR = "settings/"
 
@@ -21,15 +22,11 @@ def main():
     settings = json.load(open(filename))
 
     explorer = Explorer(settings)
-    
-    print(f"Explored {explorer.explore()} states in total.\n")
+    explorer.explore()
     
     lut = explorer.get_lut()
 
-    for state, state_details in lut.items():
-        print(state_details)
-        print()
-        print()
+    save(settings, lut)
 
 if __name__ == "__main__":
     main()

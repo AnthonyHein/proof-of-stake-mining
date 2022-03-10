@@ -39,7 +39,7 @@ class NonCheckpointFinality(Lemma):
         if state.get_attacker_blocks() != state.get_unpublished_blocks():
             return None
 
-        height_of_longest_chain = len(state.get_longest_path())
+        height_of_longest_chain = len(state.get_longest_path()) - 1
         heights_unpublished_blocks_can_reach = get_heights_unpublished_blocks_can_reach(state)
 
         if len(heights_unpublished_blocks_can_reach) == 0 or \

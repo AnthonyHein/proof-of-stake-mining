@@ -51,7 +51,7 @@ def bound_isinstance(x: object, cls: Callable[[], None]) -> bool:
         keys = set(["lemma", "upper_bound"])
 
     else:
-        print(f"bound.bound_isinstance: class {cls} can not be checked by this method")
+        print(f"bound.bound_isinstance: object {x} and class {cls} can not be checked by this method")
         sys.exit(1)
 
     return isinstance(x, dict) and set(x.keys()) == keys

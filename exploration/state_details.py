@@ -1,3 +1,4 @@
+import numpy as np
 import sympy as sp
 import sys
 from typing import List, Union
@@ -9,6 +10,8 @@ from settings.setting import Setting
 from state import State
 from state_utils import *
 from symbols import *
+
+POINTS_SAMPLED = 100
 
 class StateDetails:
 
@@ -94,7 +97,7 @@ class StateDetails:
             if upper_bound is not None:
                 self.bounds.append(upper_bound)
 
-        domain = sp.Interval(settings["alpha_pos_lower_bound"],settings["alpha_pos_upper_bound"]).intersect(sp.S.Reals)
+        domain = sp.Interval(settings["alpha_pos_lower_bound"],settings["alpha_pos_upper_bound"])
 
         # Best Lower Bound
         self.best_lower_bound = {
@@ -112,7 +115,10 @@ class StateDetails:
             a = (self.best_lower_bound["immediate_reward"] if bound_isinstance(self.best_lower_bound, ActionLowerBound) else sp.Integer(0)) + self.best_lower_bound["lower_bound"]
             b = (bound["immediate_reward"] if bound_isinstance(bound, ActionBound) else sp.Integer(0)) + bound["lower_bound"]
 
-            soln = sp.solveset(a < b, alpha, domain)
+            try:
+                soln = sp.solveset(a <= b, alpha, domain)
+            except:
+                soln = sp.Interval(settings["alpha_pos_lower_bound"], (settings["alpha_pos_lower_bound"] + settings["alpha_pos_upper_bound"]) / 2)
 
             if soln == domain:
                 if bound_isinstance(bound, ActionBound):
@@ -129,8 +135,32 @@ class StateDetails:
                 continue
 
             else:
-                print(f"state_details._fill: two bounds are incomparable when resolving {self.state}, in particular\n{self.best_lower_bound}\nand\n{bound}")
-                sys.exit(1)
+                xs = np.linspace(settings["alpha_pos_lower_bound"], settings["alpha_pos_upper_bound"], POINTS_SAMPLED)
+
+                best_lower_bound_fn = sp.lambdify(alpha, a, 'numpy')
+                bound_fn = sp.lambdify(alpha, b, 'numpy')
+
+                lst = zip([best_lower_bound_fn(x) for x in xs], [bound_fn(x) for x in xs])
+
+                soln = sum([a <= b for a, b in lst])
+
+                if soln == POINTS_SAMPLED:
+                    if bound_isinstance(bound, ActionBound):
+                        self.best_lower_bound = {
+                            "action": bound["action"],
+                            "immediate_reward": bound["immediate_reward"],
+                            "subsequent_state": bound["subsequent_state"],
+                            "lower_bound": bound["lower_bound"],
+                        }
+                    else:
+                        self.best_lower_bound = bound
+
+                elif soln == 0:
+                    continue
+
+                else:
+                    print(f"state_details._fill: two bounds are incomparable when resolving {self.state}, in particular\n{self.best_lower_bound}\nand\n{bound}")
+                    sys.exit(1)                
 
         # Best Upper Bound
         self.best_upper_bound = {
@@ -148,7 +178,10 @@ class StateDetails:
             a = (self.best_upper_bound["immediate_reward"] if bound_isinstance(self.best_upper_bound, ActionLowerBound) else sp.Integer(0)) + self.best_upper_bound["upper_bound"]
             b = (bound["immediate_reward"] if bound_isinstance(bound, ActionBound) else sp.Integer(0)) + bound["upper_bound"]
 
-            soln = sp.solveset(a < b, alpha, domain)
+            try:
+                soln = sp.solveset(a <= b, alpha, domain)
+            except:
+                soln = sp.Interval(settings["alpha_pos_lower_bound"], (settings["alpha_pos_lower_bound"] + settings["alpha_pos_upper_bound"]) / 2)
 
             if soln == domain:
                 if bound_isinstance(bound, ActionBound):
@@ -165,8 +198,32 @@ class StateDetails:
                 continue
 
             else:
-                print(f"state_details._fill: two bounds are incomparable when resolving {self.state}, in particular\n{self.best_upper_bound}\nand\n{bound}")
-                sys.exit(1)
+                xs = np.linspace(settings["alpha_pos_lower_bound"], settings["alpha_pos_upper_bound"], POINTS_SAMPLED)
+
+                best_upper_bound_fn = sp.lambdify(alpha, a, 'numpy')
+                bound_fn = sp.lambdify(alpha, b, 'numpy')
+
+                lst = zip([best_upper_bound_fn(x) for x in xs], [bound_fn(x) for x in xs])
+
+                soln = sum([a <= b for a, b in lst])
+
+                if soln == POINTS_SAMPLED:
+                    if bound_isinstance(bound, ActionBound):
+                        self.best_upper_bound = {
+                            "action": bound["action"],
+                            "immediate_reward": bound["immediate_reward"],
+                            "subsequent_state": bound["subsequent_state"],
+                            "upper_bound": bound["upper_bound"],
+                        }
+                    else:
+                        self.best_upper_bound = bound
+
+                elif soln == 0:
+                    continue
+
+                else:
+                    print(f"state_details._fill: two bounds are incomparable when resolving {self.state}, in particular\n{self.best_upper_bound}\nand\n{bound}")
+                    sys.exit(1)
 
     def get_state(self) -> State:
         """
@@ -212,7 +269,7 @@ class StateDetails:
 
         s += "\n"
 
-        s += "Action/Lemma, Subsequent State, Immediate Reward, Lower Bound, Upper Bound\n"
+        s += "Action/Lemma, Immediate Reward, Subsequent State, Lower Bound, Upper Bound\n"
         for bound in self.bounds:
 
             if bound_isinstance(bound, ActionBound):

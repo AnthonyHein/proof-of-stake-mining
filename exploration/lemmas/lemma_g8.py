@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sympy import symbols
+from sympy import evaluate, symbols
 
 from bound import LemmaLowerBound, LemmaUpperBound
 from lemmas.lemma import Lemma
@@ -39,7 +39,7 @@ class LemmaG8(Lemma):
         by this lemma as a function of alpha, or `None` if this lemma
         does not prove any such upper bound.
         """
-        height_of_longest_chain = len(state.get_longest_path())
+        height_of_longest_chain = len(state.get_longest_path()) - 1
         heights_attacker_blocks_can_reach = get_heights_unpublished_blocks_can_reach(state)
 
         attacker_blocks_below_longest_chain = list(filter(lambda x: x <= height_of_longest_chain, heights_attacker_blocks_can_reach))

@@ -4,12 +4,11 @@ from typing import Callable, List, TypedDict
 class Setting(TypedDict):
     alpha_pos_lower_bound: float
     alpha_pos_upper_bound: float
-    conjectures: List[int]
+    exploration_depth: int
     continue_from_known_states: bool
     display_known_states: bool
-    exploration_depth: int
     recurse: bool
-    visualization: str
+    save_as: str
 
 def setting_isinstance(x: object, cls: Callable[[], None]) -> bool:
     keys = set()

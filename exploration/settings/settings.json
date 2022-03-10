@@ -1,10 +1,9 @@
 {
     "alpha_pos_lower_bound": 0.3080,
     "alpha_pos_upper_bound": 0.3235,
-    "conjectures": [1],
+    "exploration_depth": 8,
     "continue_from_known_states": false,
     "display_known_states": true,
-    "exploration_depth": 2,
     "recurse": true,
-    "visualization": "cards"
+    "save_as": "html"
 }
