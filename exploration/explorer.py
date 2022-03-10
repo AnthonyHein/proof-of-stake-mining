@@ -26,8 +26,9 @@ class Explorer:
         x = self._explore_state(State())
 
         print(f"Explored {x} states in {int(time.time() - start)} seconds.")
-
         
+        self.lut = { k: v for k,v in self.lut.items() if v is not None }
+
         while True:
             start = time.time()
             x = self._fine_tune()

@@ -1,0 +1,7 @@
+- If the exploration depth is x. Then for states with sequence length x, the explorer will not
+bound this state with any ActionBound. It will only use LemmaLowerBound or LemmaUpperBound. This
+is because taking an action and looking at subsequent states would exceed the exploration depth.
+
+- Running with exploration depth 9 does not terminate.
+
+- Cannot use "promised" actions (like selfish mining) as lower bounds.

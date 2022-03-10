@@ -6,7 +6,7 @@ from state_utils import *
 
 def main():
 
-    depth = 8
+    depth = 9
     lut : dict[State, dict[State, str]] = {}
 
     def aux(state: State) -> None:
