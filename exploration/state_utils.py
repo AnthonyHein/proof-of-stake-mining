@@ -27,7 +27,6 @@ def get_heights_unpublished_blocks_can_reach(state: State) -> List[int]:
     * the number blocks in the longest path less than this block
     * and, the height of the most previous attacker block plus one
     """
-
     heights = []
 
     prev_unpublished_block_height = 0
@@ -44,6 +43,17 @@ def get_heights_unpublished_blocks_can_reach(state: State) -> List[int]:
         heights.append(curr_unpublished_block_height)
 
     return tuple(heights)
+
+def occurs_after_state(start: State, end: State) -> bool:
+    """
+    Check whether `end` state occurs strictly after `start` state. This function
+    only works correctly on states where the attacker has not yet published anything.
+    This is because it is very difficult to know _when_ blocks in the longest path
+    were added to the longest path and so it is difficult to know if a state occurs
+    after another in the general case.
+    """
+    return len(start) != len(end) and start.get_sequence() == end.get_sequence()[:len(start)]
+
 
 def get_reward_between_states(start: State, end: State) -> sp.core.add.Add:
     """

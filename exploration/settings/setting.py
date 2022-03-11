@@ -6,6 +6,7 @@ class Setting(TypedDict):
     alpha_pos_upper_bound: float
     exploration_depth: int
     continue_from_known_states: bool
+    display_uninteresting_states: bool
     display_known_states: bool
     recurse: bool
     save_as: str

@@ -2,6 +2,45 @@
 bound this state with any ActionBound. It will only use LemmaLowerBound or LemmaUpperBound. This
 is because taking an action and looking at subsequent states would exceed the exploration depth.
 
-- Running with exploration depth 9 does not terminate.
+- Running with exploration depth 9 does not terminate. I think this is because it gets stuck in
+a loop with (H) since this occurs _after_ a known state.
 
 - Cannot use "promised" actions (like selfish mining) as lower bounds.
+
+- state_utils.occurs_after_state() only promises to work correctly on states where the attacker
+has not yet published anything. This is because it is very difficult to know _when_ blocks in the
+longest path were added to the longest path and so it is difficult to know if a state occurs after
+another in the general case.
+
+- Lemma G8 should only be applied at base cases since it has no meaning otherwise (since at least
+one action is always available). Actually, Lemma G8 is currently evaluating for everything.
+
+- How exactly do I select upper bounds?
+
+- At the exploration depth, the explorer will not look at the action "Wait" since the subsequent
+states exceed the exploration depth. In turn, the resulting bounds are inaccurate since the loosest
+upper bound is usually due to waiting. To fix this, at the exploration depth the explorer does not
+try out _any_ actions.
+
+- Accidentally left out the (- alpha) that is due to the honest miner mining a block.
+
+- Bounds like (A) are incomparable. I am getting a result that I am getting a larger bound for waiting
+thank Lemma G.8 is better for a strength of alpha <= 0.3176 though I cannot explain this result and it
+is a lot to chase down.
+
+- This code does not terminate for some expressions when trying to compare bounds:
+
+    domain = sp.Interval(settings["alpha_pos_lower_bound"], settings["alpha_pos_upper_bound"])
+    # Comparison.
+    try:
+        soln = sp.solveset(expr_a <= expr_b, alpha, domain)
+    except:
+        soln = sp.Interval(settings["alpha_pos_lower_bound"], (settings["alpha_pos_lower_bound"] + settings["alpha_pos_upper_bound"]) / 2)
+
+    if soln == domain:
+        return True
+
+    elif soln == sp.S.EmptySet:
+        return False
+
+    else:

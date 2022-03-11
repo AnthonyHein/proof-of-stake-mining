@@ -123,7 +123,7 @@ def _plot_state_details(settings: Setting, filename: str, state_details: StateDe
         plt.clf()
 
     lower_bound_fn = sp.lambdify(alpha, (state_details.get_best_lower_bound()["immediate_reward"] if bound_isinstance(state_details.get_best_lower_bound(), ActionLowerBound) else sp.Integer(0)) + state_details.get_best_lower_bound()["lower_bound"], 'numpy')
-    upper_bound_fn = sp.lambdify(alpha, (state_details.get_best_upper_bound()["immediate_reward"] if bound_isinstance(state_details.get_best_upper_bound(), ActionLowerBound) else sp.Integer(0)) + state_details.get_best_upper_bound()["upper_bound"], 'numpy')
+    upper_bound_fn = sp.lambdify(alpha, (state_details.get_best_upper_bound()["immediate_reward"] if bound_isinstance(state_details.get_best_upper_bound(), ActionUpperBound) else sp.Integer(0)) + state_details.get_best_upper_bound()["upper_bound"], 'numpy')
 
     plt.plot(xs, [lower_bound_fn(x) for x in xs], color="green")
     plt.tight_layout()

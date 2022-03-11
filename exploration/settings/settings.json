@@ -1,9 +1,10 @@
 {
-    "alpha_pos_lower_bound": 0.3080,
+    "alpha_pos_lower_bound": 0.3152,
     "alpha_pos_upper_bound": 0.3235,
-    "exploration_depth": 9,
+    "exploration_depth": 10,
     "continue_from_known_states": false,
-    "display_known_states": true,
-    "recurse": false,
+    "display_uninteresting_states": false,
+    "display_known_states": false,
+    "recurse": true,
     "save_as": "html"
 }

@@ -4,6 +4,7 @@ import sys
 from typing import List, Union
 
 from bound import *
+from lemmas.lemma_g8 import LemmaG8
 from known_states import known_states
 from lemmas import lemmas
 from settings.setting import Setting
@@ -50,36 +51,54 @@ class StateDetails:
             return
 
         # Action Bounds
-        for action in get_available_actions(self.state):
-            subsequent_state = self.state.next_state_from_action(*action)
-            immediate_reward = get_reward_between_states(self.state, subsequent_state)
+        if len(self.state) < settings["exploration_depth"]:
 
-            checkpoints = get_checkpoints(subsequent_state)
+            for action in get_available_actions(self.state):
+                subsequent_state = self.state.next_state_from_action(*action)
+                immediate_reward = get_reward_between_states(self.state, subsequent_state)
 
-            if len(checkpoints) > 1:
-                subsequent_state = subsequent_state.next_state_from_capitulation(checkpoints[-1])
+                checkpoints = get_checkpoints(subsequent_state)
 
-            if subsequent_state == State():
-                self.bounds.append({
-                    "action": action,
-                    "immediate_reward": immediate_reward,
-                    "subsequent_state": subsequent_state,
-                    "lower_bound": sp.Integer(0),
-                    "upper_bound": sp.Integer(0),
-                })
-                continue
+                if len(checkpoints) > 1:
+                    subsequent_state = subsequent_state.next_state_from_capitulation(checkpoints[-1])
 
-            if subsequent_state.next_state_attacker() in lut and \
-               lut[subsequent_state.next_state_attacker()] is not None and \
-               subsequent_state.next_state_honest_miner() in lut and \
-               lut[subsequent_state.next_state_honest_miner()] is not None:
-                self.bounds.append({
-                    "action": action,
-                    "immediate_reward": immediate_reward,
-                    "subsequent_state": subsequent_state,
-                    "lower_bound": alpha * lut[subsequent_state.next_state_attacker()].get_best_lower_bound()["lower_bound"] + (1 - alpha) * lut[subsequent_state.next_state_honest_miner()].get_best_lower_bound()["lower_bound"],
-                    "upper_bound": alpha * lut[subsequent_state.next_state_attacker()].get_best_upper_bound()["upper_bound"] + (1 - alpha) * lut[subsequent_state.next_state_honest_miner()].get_best_upper_bound()["upper_bound"],
-                })
+                if subsequent_state == State():
+                    self.bounds.append({
+                        "action": action,
+                        "immediate_reward": immediate_reward,
+                        "subsequent_state": subsequent_state,
+                        "lower_bound": sp.Integer(0),
+                        "upper_bound": sp.Integer(0),
+                    })
+                    continue
+
+                next_state_a = subsequent_state.next_state_attacker()
+                next_state_h = subsequent_state.next_state_honest_miner()
+
+                if next_state_a in lut and \
+                lut[next_state_a] is not None and \
+                next_state_h in lut and \
+                lut[next_state_h] is not None:
+
+                    next_state_a_lower_bound = lut[next_state_a].get_best_lower_bound()
+                    next_state_a_upper_bound = lut[next_state_a].get_best_upper_bound()
+
+                    next_state_h_lower_bound = lut[next_state_h].get_best_lower_bound()
+                    next_state_h_upper_bound = lut[next_state_h].get_best_upper_bound()
+
+                    next_state_a_lower_bound_expr = (next_state_a_lower_bound["immediate_reward"] if bound_isinstance(next_state_a_lower_bound, ActionLowerBound) else sp.Integer(0)) + next_state_a_lower_bound["lower_bound"]
+                    next_state_a_upper_bound_expr = (next_state_a_upper_bound["immediate_reward"] if bound_isinstance(next_state_a_upper_bound, ActionUpperBound) else sp.Integer(0)) + next_state_a_upper_bound["upper_bound"]
+
+                    next_state_h_lower_bound_expr = (next_state_h_lower_bound["immediate_reward"] if bound_isinstance(next_state_h_lower_bound, ActionLowerBound) else sp.Integer(0)) + next_state_h_lower_bound["lower_bound"]
+                    next_state_h_upper_bound_expr = (next_state_h_upper_bound["immediate_reward"] if bound_isinstance(next_state_h_upper_bound, ActionUpperBound) else sp.Integer(0)) + next_state_h_upper_bound["upper_bound"]
+
+                    self.bounds.append({
+                        "action": action,
+                        "immediate_reward": immediate_reward,
+                        "subsequent_state": subsequent_state,
+                        "lower_bound": alpha * next_state_a_lower_bound_expr + (1 - alpha) * (next_state_h_lower_bound_expr - alpha),
+                        "upper_bound": alpha * next_state_a_upper_bound_expr + (1 - alpha) * (next_state_h_upper_bound_expr - alpha),
+                    })
 
         # Lemma Lower Bounds:
         for lemma in lemmas:
@@ -97,133 +116,98 @@ class StateDetails:
             if upper_bound is not None:
                 self.bounds.append(upper_bound)
 
-        domain = sp.Interval(settings["alpha_pos_lower_bound"],settings["alpha_pos_upper_bound"])
-
-        # Best Lower Bound
-        self.best_lower_bound = {
-            "action": "Unknown",
+        self.best_lower_bound: ActionLowerBound = {
+            "action": "Capitulate",
             "immediate_reward": sp.Integer(0),
-            "subsequent_state": "Unknown",
+            "subsequent_state": State(),
             "lower_bound": sp.Integer(0),
         }
 
-        for bound in self.bounds:
+        if len(list(filter(lambda x: bound_isinstance(x, ActionBound), self.bounds))) == 0:
+            self.best_upper_bound: LemmaUpperBound = LemmaG8.upper_bound(settings, self.state)
+        else:
+            self.best_upper_bound: ActionUpperBound = {
+                "action": "Dummy",
+                "immediate_reward": sp.Integer(0),
+                "subsequent_state": State(),
+                "upper_bound": sp.Integer(0),
+            }
 
-            if bound_isinstance(bound, LemmaUpperBound):
-                continue
+        for bound in filter(lambda x: bound_isinstance(x, ActionBound), self.bounds):
 
-            a = (self.best_lower_bound["immediate_reward"] if bound_isinstance(self.best_lower_bound, ActionLowerBound) else sp.Integer(0)) + self.best_lower_bound["lower_bound"]
-            b = (bound["immediate_reward"] if bound_isinstance(bound, ActionBound) else sp.Integer(0)) + bound["lower_bound"]
+            if self._bound_less_than(settings, self.best_lower_bound, bound, lower_bound=True):
+                self.best_lower_bound = {
+                    "action": bound["action"],
+                    "immediate_reward": bound["immediate_reward"],
+                    "subsequent_state": bound["subsequent_state"],
+                    "lower_bound": bound["lower_bound"],
+                }
 
-            try:
-                soln = sp.solveset(a <= b, alpha, domain)
-            except:
-                soln = sp.Interval(settings["alpha_pos_lower_bound"], (settings["alpha_pos_lower_bound"] + settings["alpha_pos_upper_bound"]) / 2)
+            if self._bound_less_than(settings, self.best_upper_bound, bound, lower_bound=False):
+                self.best_upper_bound = {
+                    "action": bound["action"],
+                    "immediate_reward": bound["immediate_reward"],
+                    "subsequent_state": bound["subsequent_state"],
+                    "upper_bound": bound["upper_bound"],
+                }
 
-            if soln == domain:
-                if bound_isinstance(bound, ActionBound):
-                    self.best_lower_bound = {
-                        "action": bound["action"],
-                        "immediate_reward": bound["immediate_reward"],
-                        "subsequent_state": bound["subsequent_state"],
-                        "lower_bound": bound["lower_bound"],
-                    }
-                else:
-                    self.best_lower_bound = bound
+        for bound in filter(lambda x: bound_isinstance(x, LemmaLowerBound), self.bounds):
 
-            elif soln == sp.S.EmptySet:
-                continue
+            if self._bound_less_than(settings, self.best_lower_bound, bound, lower_bound=True):
+                self.best_lower_bound = bound
 
-            else:
-                xs = np.linspace(settings["alpha_pos_lower_bound"], settings["alpha_pos_upper_bound"], POINTS_SAMPLED)
+        for bound in filter(lambda x: bound_isinstance(x, LemmaUpperBound), self.bounds):
 
-                best_lower_bound_fn = sp.lambdify(alpha, a, 'numpy')
-                bound_fn = sp.lambdify(alpha, b, 'numpy')
+            if self._bound_less_than(settings, bound, self.best_upper_bound, lower_bound=False):
+                self.best_upper_bound = bound
 
-                lst = zip([best_lower_bound_fn(x) for x in xs], [bound_fn(x) for x in xs])
+    def _bound_less_than(self,
+                         settings: Setting,
+                         bound_a: Union[ActionBound, ActionLowerBound, ActionUpperBound, LemmaLowerBound, LemmaUpperBound],
+                         bound_b: Union[ActionBound, ActionLowerBound, ActionUpperBound, LemmaLowerBound, LemmaUpperBound],
+                         lower_bound: bool) -> bool:
+        """
+        Compare bounds `bound_a` and `bound_b` and return `True` if and only if
+        the expression for `bound_a` is less than the expression for `bound_b`
+        over the interval where `lower_bound` selects either an expression for
+        the lower or upper bound. This comparison is checked over the interval
+        (settings["alpha_pos_lower_bound], settings["alpha_pos_upper_bound]).
+        """
 
-                soln = sum([a <= b for a, b in lst])
+        # Extract expressions.
+        if bound_isinstance(bound_a, ActionBound) or bound_isinstance(bound_a, ActionLowerBound) or bound_isinstance(bound_a, ActionUpperBound):
+            expr_a = bound_a["immediate_reward"] + bound_a["lower_bound" if lower_bound else "upper_bound"]
+        else:
+            expr_a = bound_a["lower_bound" if lower_bound else "upper_bound"]
 
-                if soln == POINTS_SAMPLED:
-                    if bound_isinstance(bound, ActionBound):
-                        self.best_lower_bound = {
-                            "action": bound["action"],
-                            "immediate_reward": bound["immediate_reward"],
-                            "subsequent_state": bound["subsequent_state"],
-                            "lower_bound": bound["lower_bound"],
-                        }
-                    else:
-                        self.best_lower_bound = bound
+        if bound_isinstance(bound_b, ActionBound) or bound_isinstance(bound_b, ActionLowerBound) or bound_isinstance(bound_b, ActionUpperBound):
+            expr_b = bound_b["immediate_reward"] + bound_b["lower_bound" if lower_bound else "upper_bound"]
+        else:
+            expr_b = bound_b["lower_bound" if lower_bound else "upper_bound"]
 
-                elif soln == 0:
-                    continue
+        # Comparison
+        if sp.simplify(expr_a - expr_b) == 0:
+            return True
 
-                else:
-                    print(f"state_details._fill: two bounds are incomparable when resolving {self.state}, in particular\n{self.best_lower_bound}\nand\n{bound}")
-                    sys.exit(1)                
+        xs = np.linspace(settings["alpha_pos_lower_bound"], settings["alpha_pos_upper_bound"], POINTS_SAMPLED)
 
-        # Best Upper Bound
-        self.best_upper_bound = {
-            "action": "Unknown",
-            "immediate_reward": sp.Integer(0),
-            "subsequent_state": "Unknown",
-            "upper_bound": sp.Integer(0),
-        }
+        expr_a_fn = sp.lambdify(alpha, expr_a, 'numpy')
+        expr_b_fn = sp.lambdify(alpha, expr_b, 'numpy')
 
-        for bound in self.bounds:
+        lst = zip([expr_a_fn(x) for x in xs], [expr_b_fn(x) for x in xs])
 
-            if bound_isinstance(bound, LemmaLowerBound):
-                continue
+        soln = sum([eval_a <= eval_b for eval_a, eval_b in lst])
 
-            a = (self.best_upper_bound["immediate_reward"] if bound_isinstance(self.best_upper_bound, ActionLowerBound) else sp.Integer(0)) + self.best_upper_bound["upper_bound"]
-            b = (bound["immediate_reward"] if bound_isinstance(bound, ActionBound) else sp.Integer(0)) + bound["upper_bound"]
+        if soln == POINTS_SAMPLED:
+            return True
 
-            try:
-                soln = sp.solveset(a <= b, alpha, domain)
-            except:
-                soln = sp.Interval(settings["alpha_pos_lower_bound"], (settings["alpha_pos_lower_bound"] + settings["alpha_pos_upper_bound"]) / 2)
+        elif soln == 0:
+            return False
 
-            if soln == domain:
-                if bound_isinstance(bound, ActionBound):
-                    self.best_upper_bound = {
-                        "action": bound["action"],
-                        "immediate_reward": bound["immediate_reward"],
-                        "subsequent_state": bound["subsequent_state"],
-                        "upper_bound": bound["upper_bound"],
-                    }
-                else:
-                    self.best_upper_bound = bound
-
-            elif soln == sp.S.EmptySet:
-                continue
-
-            else:
-                xs = np.linspace(settings["alpha_pos_lower_bound"], settings["alpha_pos_upper_bound"], POINTS_SAMPLED)
-
-                best_upper_bound_fn = sp.lambdify(alpha, a, 'numpy')
-                bound_fn = sp.lambdify(alpha, b, 'numpy')
-
-                lst = zip([best_upper_bound_fn(x) for x in xs], [bound_fn(x) for x in xs])
-
-                soln = sum([a <= b for a, b in lst])
-
-                if soln == POINTS_SAMPLED:
-                    if bound_isinstance(bound, ActionBound):
-                        self.best_upper_bound = {
-                            "action": bound["action"],
-                            "immediate_reward": bound["immediate_reward"],
-                            "subsequent_state": bound["subsequent_state"],
-                            "upper_bound": bound["upper_bound"],
-                        }
-                    else:
-                        self.best_upper_bound = bound
-
-                elif soln == 0:
-                    continue
-
-                else:
-                    print(f"state_details._fill: two bounds are incomparable when resolving {self.state}, in particular\n{self.best_upper_bound}\nand\n{bound}")
-                    sys.exit(1)
+        else:
+            print(f"state_details._bound_less_than: two bounds are incomparable when resolving {self.state}, in particular\n{bound_a}\nand\n{bound_b}")
+            return True if soln >= POINTS_SAMPLED / 2 else False
+            # sys.exit(1)
 
     def get_state(self) -> State:
         """

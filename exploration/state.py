@@ -118,12 +118,12 @@ class State:
             print(f"State.next_state_from_action: argument `k` with value {k} is not large enough such that the action is timeserving for longest path {self.longest_path}")
             sys.exit(1)
 
-        blocks = list(filter(lambda x: x > v, self.unpublished_blocks))[:k]
+        blocks = sorted(list(filter(lambda x: x > v, self.unpublished_blocks)))[:k]
 
         return State(
             sequence=self.sequence,
             longest_path=tuple(list(filter(lambda x: x <= v, self.longest_path)) + blocks),
-            unpublished_blocks=tuple(set(self.unpublished_blocks).difference(set(blocks)))
+            unpublished_blocks=tuple(sorted(set(self.unpublished_blocks).difference(set(blocks))))
         )
 
     def next_state_from_capitulation(self, genesis: int) -> 'State':
@@ -139,10 +139,20 @@ class State:
             print(f"State.next_state_from_capitulation: argument `genesis` with value {genesis} is not in the longest path {self.longest_path}")
             sys.exit(1)
 
+        unpublished_blocks = tuple([block for block in self.unpublished_blocks if block >= genesis])
+        longest_path = tuple([block for block in self.longest_path if block >= genesis])
+        attacker_blocks = list(set(filter(lambda x: x > genesis, self.attacker_blocks)).intersection(unpublished_blocks + longest_path))
+        honest_miner_blocks = list(set(filter(lambda x: x > genesis, self.honest_miner_blocks)).intersection(longest_path))
+
+        sequence = []
+
+        for i in range(genesis + 1, genesis + 1 + len(attacker_blocks) + len(honest_miner_blocks)):
+            sequence.append('A' if i in attacker_blocks else 'H')
+
         return State(
-            sequence=tuple(list(self.sequence)[genesis:]),
-            longest_path=tuple([block - genesis for block in self.longest_path if block >= genesis]),
-            unpublished_blocks=tuple([block - genesis for block in self.unpublished_blocks if block >= genesis]),
+            sequence=tuple(sequence),
+            longest_path=tuple(block - genesis for block in longest_path),
+            unpublished_blocks=tuple(block - genesis for block in unpublished_blocks),
         )
 
     def get_sequence(self) -> Tuple[str, ...]:
@@ -282,6 +292,10 @@ def main():
     print()
 
     state = State(sequence=('A', 'H', 'H', 'A', 'H', 'H', 'A')).next_state_from_capitulation(5)
+    print(state)
+    print()
+
+    state = State(sequence=('A', 'H', 'H', 'A', 'H', 'H', 'A', 'A', 'H')).next_state_from_action(2, 6).next_state_from_capitulation(8)
     print(state)
     print()
 

@@ -10,7 +10,7 @@ def main():
     lut : dict[State, dict[State, str]] = {}
 
     def aux(state: State) -> None:
-        if len(state) == depth:
+        if len(state) > depth:
             return
 
         if state in lut or len(get_checkpoints(state)) > 1:

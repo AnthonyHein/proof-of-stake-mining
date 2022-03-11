@@ -1,3 +1,4 @@
+from bound import *
 from known_states import known_states
 from settings.setting import Setting
 from state import State
@@ -32,7 +33,7 @@ class Explorer:
         while True:
             start = time.time()
             x = self._fine_tune()
-            print(f"Fine-tuned once in {int(time.time() - start)} seconds.")
+            print(f"Fine-tuned {x} states in {int(time.time() - start)} seconds.")
             
             if x == 0:
                 break
@@ -42,7 +43,17 @@ class Explorer:
                 if known_state in self.lut:
                     self.lut.pop(known_state)
 
-        print("Done exploring.")
+        uninteresting_states = []
+
+        if not self.settings["display_uninteresting_states"]:
+            for state, state_details in self.lut.items():
+                if sum([bound_isinstance(bound, ActionBound) for bound in state_details.get_bounds()]) <= 1: # only wait
+                    uninteresting_states.append(state)
+
+        for state in uninteresting_states:
+            self.lut.pop(state)
+
+        print(f"Done exploring. {len(self.lut)} states left after pruning.")
 
     def _explore_state(self, state: State) -> int:
         """
@@ -57,6 +68,10 @@ class Explorer:
 
         if len(state) > self.settings["exploration_depth"]:
             return x
+
+        if not self.settings["continue_from_known_states"] and any([occurs_after_state(known_state, state) for known_state in known_states]):
+            print(f"explorer._explore_state: trying to explore {state} but it shouldn't ever reach here because this follows a known state")
+            sys.exit(1)
 
         checkpoints = get_checkpoints(state)
 
@@ -77,6 +92,7 @@ class Explorer:
                 x += self._explore_state(subsequent_state.next_state_honest_miner())
 
         if len(state) == self.settings["exploration_depth"] or self.settings["recurse"]:
+            print(f"Added {state}.")
             self.lut[state] = StateDetails(state, self.settings, self.lut)
             x += 1
         
