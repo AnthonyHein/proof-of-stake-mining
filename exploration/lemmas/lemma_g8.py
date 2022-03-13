@@ -1,7 +1,5 @@
 from typing import Optional
 
-from sympy import evaluate, symbols
-
 from bound import LemmaLowerBound, LemmaUpperBound
 from lemmas.lemma import Lemma
 from settings.setting import Setting
@@ -40,33 +38,14 @@ class LemmaG8(Lemma):
         does not prove any such upper bound.
         """
         height_of_longest_chain = len(state.get_longest_path()) - 1
-        heights_attacker_blocks_can_reach = get_heights_unpublished_blocks_can_reach(state)
+        heights_unpublished_blocks_can_reach = get_heights_unpublished_blocks_can_reach(state)
+        heights_unpublished_blocks_above_longest_chain = list(filter(lambda x: x > height_of_longest_chain, heights_unpublished_blocks_can_reach))
 
-        attacker_blocks_below_longest_chain = list(filter(lambda x: x <= height_of_longest_chain, heights_attacker_blocks_can_reach))
-        attacker_blocks_above_longest_chain = list(filter(lambda x: x > height_of_longest_chain, heights_attacker_blocks_can_reach))
+        deficits, runs = get_deficits_and_runs(state)
 
-        deficits = []
-        runs = []
-
-        curr_deficit = 1
-        curr_run = 0
-
-        for i in range(height_of_longest_chain, 0, -1):
-            if i in attacker_blocks_below_longest_chain:
-                curr_run += 1
-
-            else:
-                if curr_run > 0:
-                    deficits.append(max(curr_deficit - len(attacker_blocks_above_longest_chain), 0))
-                    runs.append(curr_run)
-                curr_run = 0
-                curr_deficit += 1
-
-        if curr_run > 0:
-            deficits.append(max(curr_deficit - len(attacker_blocks_above_longest_chain), 0))
-            runs.append(curr_run)
+        deficits = [max(deficit - len(heights_unpublished_blocks_above_longest_chain), 0) for deficit in deficits]
 
         return {
             "lemma": LemmaG8.get_name(),
-            "upper_bound": sum([runs[i] * (alpha / (1 - alpha)) ** deficits[i] for i in range(len(runs))]) + (len(attacker_blocks_above_longest_chain) + max(len(attacker_blocks_above_longest_chain) - 1, 0) * (alpha / (1 - 2 * alpha))) * (1 - alpha)
+            "upper_bound": sum([runs[i] * (alpha / (1 - alpha)) ** deficits[i] for i in range(len(runs))]) + (len(heights_unpublished_blocks_above_longest_chain) + max(len(heights_unpublished_blocks_above_longest_chain) - 1, 0) * (alpha / (1 - 2 * alpha))) * (1 - alpha)
         }

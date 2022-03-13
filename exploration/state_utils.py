@@ -1,7 +1,9 @@
 import sympy as sp
 import sys
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
+from commitment import *
+from random_walk_utils import *
 from state import State
 from symbols import *
 
@@ -244,6 +246,172 @@ def get_subsequent_states(state: State) -> List[State]:
     """
     return [state.next_state_from_action(*action) for action in get_available_actions(state)]
 
+def get_deficits_and_runs(state: State) -> Tuple[List[int], List[int]]:
+    """
+    Get the list of deficits and runs for state `state`. This comment should be
+    updated when there is a better way of explaining what deficits and runs are,
+    but for the moment they are just as defined by this code. Returned as the
+    tuple (deficits, runs).
+    """
+    height_of_longest_chain = len(state.get_longest_path()) - 1
+    heights_unpublished_blocks_can_reach = get_heights_unpublished_blocks_can_reach(state)
+
+    heights_unpublished_blocks_below_longest_chain = list(filter(lambda x: x <= height_of_longest_chain, heights_unpublished_blocks_can_reach))
+    heights_unpublished_blocks_above_longest_chain = list(filter(lambda x: x > height_of_longest_chain, heights_unpublished_blocks_can_reach))
+
+    deficits = []
+    runs = []
+
+    curr_deficit = 1
+    curr_run = 0
+
+    for i in range(height_of_longest_chain, 0, -1):
+        if i in heights_unpublished_blocks_below_longest_chain:
+            curr_run += 1
+
+        else:
+            if curr_run > 0:
+                deficits.append(curr_deficit)
+                runs.append(curr_run)
+            curr_run = 0
+            curr_deficit += 1
+
+    if curr_run > 0:
+        deficits.append(curr_deficit)
+        runs.append(curr_run)
+
+    return (deficits, runs)
+
+def get_available_commitments(state: State) -> List[Union[OneBoundaryCommitment, TwoBoundaryCommitment]]:
+    """
+    Get all commitments available at state `state`. The class of commitments we
+    consider is outlined in `commitment.py`.
+    """
+    commitments: List[Union[OneBoundaryCommitment, TwoBoundaryCommitment]] = []
+
+    height_of_longest_chain: int = len(state.get_longest_path()) - 1
+    unpublished_blocks: List[int] = list(state.get_unpublished_blocks())
+    heights_unpublished_blocks_can_reach: List[int] = get_heights_unpublished_blocks_can_reach(state)
+
+    heights_unpublished_blocks_below_longest_chain: List[int] = list(filter(lambda x: x <= height_of_longest_chain, heights_unpublished_blocks_can_reach))
+    heights_unpublished_blocks_above_longest_chain: List[int] = list(filter(lambda x: x > height_of_longest_chain, heights_unpublished_blocks_can_reach))
+
+    if len(heights_unpublished_blocks_above_longest_chain) < 2:
+        return commitments
+
+    unpublished_blocks_below_longest_chain: List[int] = list(unpublished_blocks)[:-len(heights_unpublished_blocks_above_longest_chain)]
+    unpublished_blocks_above_longest_chain: List[int] = list(unpublished_blocks)[-len(heights_unpublished_blocks_above_longest_chain):]
+
+    committed_blocks: List[int] = list(unpublished_blocks_above_longest_chain)
+    selfish_mining_blocks: List[int] = list(unpublished_blocks_above_longest_chain)
+    initial_position: int = len(unpublished_blocks_above_longest_chain) - 1
+
+    # Calculate all deficits.
+    deficits, runs = get_deficits_and_runs(state)
+
+    remaining_unpublished_blocks_below_longest_chain  = unpublished_blocks_below_longest_chain
+    remaining_heights_unpublished_blocks_below_longest_chain = heights_unpublished_blocks_below_longest_chain
+
+    # See if there are some blocks which are promised to be published in any commitment scheme.
+    if len(deficits) > 0 and deficits[0] == 1:
+        committed_blocks = remaining_unpublished_blocks_below_longest_chain[-runs[0]:] + committed_blocks
+        remaining_unpublished_blocks_below_longest_chain = remaining_unpublished_blocks_below_longest_chain[:-runs[0]]
+        remaining_heights_unpublished_blocks_below_longest_chain = remaining_heights_unpublished_blocks_below_longest_chain[:-runs[0]]
+        deficits = deficits[1:]
+        runs = runs[1:]
+
+    og_committed_blocks = committed_blocks.copy()
+    og_selfish_mining_blocks = selfish_mining_blocks.copy()
+
+    # First feasible set of committed blocks.
+    commitments += _get_available_commitments_fixed_committed_blocks(
+        state,
+        og_committed_blocks,
+        og_selfish_mining_blocks,
+        committed_blocks,
+        selfish_mining_blocks,
+        initial_position,
+        deficits,
+        runs,
+        remaining_unpublished_blocks_below_longest_chain,
+        remaining_heights_unpublished_blocks_below_longest_chain,
+    )
+
+    # Find all other feasible sets of committed blocks.
+    for i in range(len(deficits)):
+        if len(og_committed_blocks) - deficits[i] >= 1:
+            committed_blocks = remaining_unpublished_blocks_below_longest_chain[-runs[i]:] + committed_blocks
+            selfish_mining_blocks = og_selfish_mining_blocks[-(len(og_selfish_mining_blocks) - deficits[i] + 1):]
+            remaining_unpublished_blocks_below_longest_chain = remaining_unpublished_blocks_below_longest_chain[:-runs[i]]
+            remaining_heights_unpublished_blocks_below_longest_chain = remaining_heights_unpublished_blocks_below_longest_chain[:-runs[i]]
+            commitments += _get_available_commitments_fixed_committed_blocks(
+                state,
+                og_committed_blocks,
+                og_selfish_mining_blocks,
+                committed_blocks,
+                selfish_mining_blocks,
+                len(selfish_mining_blocks) - 1,
+                deficits[i+1:],
+                runs[i+1:],
+                remaining_unpublished_blocks_below_longest_chain,
+                remaining_heights_unpublished_blocks_below_longest_chain,
+            )
+        else:
+            break
+
+    return commitments
+
+def _get_available_commitments_fixed_committed_blocks(state: State,
+                                                      og_committed_blocks : List[int],
+                                                      og_selfish_mining_blocks : List[int],
+                                                      committed_blocks: List[int],
+                                                      selfish_mining_blocks: List[int],
+                                                      initial_position: int,
+                                                      deficits: List[int],
+                                                      runs: List[int],
+                                                      remaining_unpublished_blocks_below_longest_chain: List[int],
+                                                      remaining_heights_unpublished_blocks_below_longest_chain: List[int]) -> List[Union[OneBoundaryCommitment, TwoBoundaryCommitment]]:
+    """
+    Get all commitments available at state `state` when the parameters of the
+    commitment are fixed as the parameters to this function.
+    """
+    commitments: List[Union[OneBoundaryCommitment, TwoBoundaryCommitment]] = [{
+        "committed_blocks": committed_blocks.copy(),
+        "selfish_mining_blocks": selfish_mining_blocks.copy(),
+        "initial_position": initial_position,
+        "boundary": 0,
+        "reward_at_boundary": (len(committed_blocks) + get_random_walk_one_boundary_increments(initial_position, 0)) * (1 - alpha) + (len(committed_blocks) - len(selfish_mining_blocks)) * alpha,
+    }]
+
+    recovered_blocks = []
+
+    for i in range(len(deficits)):
+
+        recovered_blocks = remaining_unpublished_blocks_below_longest_chain[-runs[i]:] + recovered_blocks
+        remaining_unpublished_blocks_below_longest_chain = remaining_unpublished_blocks_below_longest_chain[:-runs[i]]
+
+        if len(og_selfish_mining_blocks) - deficits[i] >= 0:
+            continue
+
+        else:
+            absorption_probabilities = get_random_walk_boundary_absorption_probabilities(initial_position, 0, initial_position + deficits[i] - len(og_selfish_mining_blocks))
+            increments = get_random_walk_two_boundary_conditional_increments(initial_position, 0, initial_position + deficits[i] - len(og_selfish_mining_blocks))
+
+            commitments.append({
+                "committed_blocks": committed_blocks.copy(),
+                "selfish_mining_blocks": selfish_mining_blocks.copy(),
+                "recovered_blocks": recovered_blocks.copy(),
+                "initial_position": initial_position,
+                "lower_boundary": 0,
+                "upper_boundary": initial_position + deficits[i] - len(og_selfish_mining_blocks),
+                "pr_lower_boundary": absorption_probabilities[0],
+                "pr_upper_boundary": absorption_probabilities[1],
+                "reward_at_lower_boundary": (len(committed_blocks) + increments[0]) * (1 - alpha) + (len(committed_blocks) - len(selfish_mining_blocks)) * alpha,
+                "reward_at_upper_boundary": (len(recovered_blocks) + len(committed_blocks) + increments[1]) * (1 - alpha) + (len(recovered_blocks) + (deficits[i] - 1) + len(og_committed_blocks) - len(selfish_mining_blocks)) * alpha,
+            })
+
+    return commitments
+
 def main():
 
     def aux(n: int, state: State):
@@ -281,3 +449,696 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Because this has proven more difficult than anticipated, this is what I think
+# the outout should be:
+
+{
+    "genesis": [],
+    "(A)": [],
+    "(2A)": [
+        {
+            "committed_blocks": [
+                1,
+                2
+            ],
+            "selfish_mining_blocks": [
+                1,
+                2
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 2\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        }
+    ],
+    "(2A, 2H)": [],
+    "(2A, 2H, A)": [],
+    "(3A)": [
+        {
+            "committed_blocks": [
+                1,
+                2,
+                3
+            ],
+            "selfish_mining_blocks": [
+                1,
+                2,
+                3
+            ],
+            "initial_position": 2,
+            "boundary": 0,
+            "reward_at_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{2 \\alpha}{1 - 2 \\alpha} + 3\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        }
+    ],
+    "(A, H, 2A)": [
+        {
+            "committed_blocks": [
+                1,
+                3,
+                4
+            ],
+            "selfish_mining_blocks": [
+                3,
+                4
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "\\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 3\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        }
+    ],
+    "(A, 2H, 3A)": [
+        {
+            "committed_blocks": [
+                4,
+                5,
+                6
+            ],
+            "selfish_mining_blocks": [
+                4,
+                5,
+                6
+            ],
+            "initial_position": 2,
+            "boundary": 0,
+            "reward_at_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{2 \\alpha}{1 - 2 \\alpha} + 3\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                1,
+                4,
+                5,
+                6
+            ],
+            "selfish_mining_blocks": [
+                5,
+                6
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "2 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 4\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        }
+    ],
+    "(A, 3H, 2A)": [
+        {
+            "committed_blocks": [
+                5,
+                6
+            ],
+            "selfish_mining_blocks": [
+                5,
+                6
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 2\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                5,
+                6
+            ],
+            "selfish_mining_blocks": [
+                5,
+                6
+            ],
+            "recovered_blocks": [
+                1
+            ],
+            "initial_position": 1,
+            "lower_boundary": 0,
+            "upper_boundary": 2,
+            "pr_lower_boundary": "\\frac{- \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "pr_upper_boundary": "\\frac{-1 + \\frac{1 - \\alpha}{\\alpha}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "reward_at_lower_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{3}{2} + \\frac{\\frac{- \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{4 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{1 - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{2 \\left(2 \\alpha - 1\\right) \\left(\\frac{1 - \\alpha}{\\alpha} - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}\\right)}\\right)",
+            "reward_at_upper_boundary": "3 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{7}{2} + \\frac{1 + \\frac{\\frac{4 \\left(1 - \\alpha\\right)}{\\alpha} - \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha}}{2 \\left(1 - \\frac{1 - \\alpha}{\\alpha}\\right) \\left(2 \\alpha - 1\\right)}\\right)",
+            "reward_at_boundary": ""
+        }
+    ],
+    "(A, 3H, 3A)": [
+        {
+            "committed_blocks": [
+                5,
+                6,
+                7
+            ],
+            "selfish_mining_blocks": [
+                5,
+                6,
+                7
+            ],
+            "initial_position": 2,
+            "boundary": 0,
+            "reward_at_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{2 \\alpha}{1 - 2 \\alpha} + 3\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        }
+    ],
+    "(A, 3H, 4A)": [
+        {
+            "committed_blocks": [
+                5,
+                6,
+                7,
+                8
+            ],
+            "selfish_mining_blocks": [
+                5,
+                6,
+                7,
+                8
+            ],
+            "initial_position": 3,
+            "boundary": 0,
+            "reward_at_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{3 \\alpha}{1 - 2 \\alpha} + 4\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                1,
+                5,
+                6,
+                7,
+                8
+            ],
+            "selfish_mining_blocks": [
+                7,
+                8
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "3 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 5\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        }
+    ],
+    "(A, 2H, A, 2H, 2A)": [
+        {
+            "committed_blocks": [
+                7,
+                8
+            ],
+            "selfish_mining_blocks": [
+                7,
+                8
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 2\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                7,
+                8
+            ],
+            "selfish_mining_blocks": [
+                7,
+                8
+            ],
+            "recovered_blocks": [
+                1,
+                4
+            ],
+            "initial_position": 1,
+            "lower_boundary": 0,
+            "upper_boundary": 2,
+            "pr_lower_boundary": "\\frac{- \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "pr_upper_boundary": "\\frac{-1 + \\frac{1 - \\alpha}{\\alpha}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "reward_at_lower_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{3}{2} + \\frac{\\frac{- \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{4 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{1 - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{2 \\left(2 \\alpha - 1\\right) \\left(\\frac{1 - \\alpha}{\\alpha} - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}\\right)}\\right)",
+            "reward_at_upper_boundary": "4 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{9}{2} + \\frac{1 + \\frac{\\frac{4 \\left(1 - \\alpha\\right)}{\\alpha} - \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha}}{2 \\left(1 - \\frac{1 - \\alpha}{\\alpha}\\right) \\left(2 \\alpha - 1\\right)}\\right)",
+            "reward_at_boundary": ""
+        }
+    ],
+    "(3A, 2H, A, 2H, 2A)": [
+        {
+            "committed_blocks": [
+                1,
+                2,
+                3,
+                6,
+                9,
+                10
+            ],
+            "selfish_mining_blocks": [
+                9,
+                10
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "4 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 6\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        }
+    ],
+    "(3A, 2H, 2A, 2H, 2A)": [
+        {
+            "committed_blocks": [
+                1,
+                2,
+                3,
+                6,
+                7,
+                10,
+                11
+            ],
+            "selfish_mining_blocks": [
+                7,
+                10,
+                11
+            ],
+            "initial_position": 2,
+            "boundary": 0,
+            "reward_at_boundary": "4 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{2 \\alpha}{1 - 2 \\alpha} + 7\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        }
+    ],
+    "(3A, 2H, 2A, 2H, 4A, H)": [
+        {
+            "committed_blocks": [
+                1,
+                2,
+                3,
+                6,
+                7,
+                10,
+                11,
+                12,
+                13
+            ],
+            "selfish_mining_blocks": [
+                10,
+                11,
+                12,
+                13
+            ],
+            "initial_position": 3,
+            "boundary": 0,
+            "reward_at_boundary": "5 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{3 \\alpha}{1 - 2 \\alpha} + 9\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        }
+    ],
+    "(A, 3H, A, H, 2A)": [
+        {
+            "committed_blocks": [
+                5,
+                7,
+                8
+            ],
+            "selfish_mining_blocks": [
+                7,
+                8
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "\\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 3\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                5,
+                7,
+                8
+            ],
+            "selfish_mining_blocks": [
+                7,
+                8
+            ],
+            "recovered_blocks": [
+                1
+            ],
+            "initial_position": 1,
+            "lower_boundary": 0,
+            "upper_boundary": 2,
+            "pr_lower_boundary": "\\frac{- \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "pr_upper_boundary": "\\frac{-1 + \\frac{1 - \\alpha}{\\alpha}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "reward_at_lower_boundary": "\\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{5}{2} + \\frac{\\frac{- \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{4 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{1 - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{2 \\left(2 \\alpha - 1\\right) \\left(\\frac{1 - \\alpha}{\\alpha} - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}\\right)}\\right)",
+            "reward_at_upper_boundary": "4 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{9}{2} + \\frac{1 + \\frac{\\frac{4 \\left(1 - \\alpha\\right)}{\\alpha} - \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha}}{2 \\left(1 - \\frac{1 - \\alpha}{\\alpha}\\right) \\left(2 \\alpha - 1\\right)}\\right)",
+            "reward_at_boundary": ""
+        }
+    ],
+    "(3A, 4H, A, 2H, 2A)": [
+        {
+            "committed_blocks": [
+                11,
+                12
+            ],
+            "selfish_mining_blocks": [
+                11,
+                12
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 2\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                11,
+                12
+            ],
+            "selfish_mining_blocks": [
+                11,
+                12
+            ],
+            "recovered_blocks": [
+                1,
+                2,
+                3,
+                8
+            ],
+            "initial_position": 1,
+            "lower_boundary": 0,
+            "upper_boundary": 2,
+            "pr_lower_boundary": "\\frac{- \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "pr_upper_boundary": "\\frac{-1 + \\frac{1 - \\alpha}{\\alpha}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "reward_at_lower_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{3}{2} + \\frac{\\frac{- \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{4 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{1 - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{2 \\left(2 \\alpha - 1\\right) \\left(\\frac{1 - \\alpha}{\\alpha} - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}\\right)}\\right)",
+            "reward_at_upper_boundary": "6 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{13}{2} + \\frac{1 + \\frac{\\frac{4 \\left(1 - \\alpha\\right)}{\\alpha} - \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha}}{2 \\left(1 - \\frac{1 - \\alpha}{\\alpha}\\right) \\left(2 \\alpha - 1\\right)}\\right)",
+            "reward_at_boundary": ""
+        }
+    ],
+    "(3A, 4H, A, 2H, 3A)": [
+        {
+            "committed_blocks": [
+                11,
+                12,
+                13
+            ],
+            "selfish_mining_blocks": [
+                11,
+                12,
+                13
+            ],
+            "initial_position": 2,
+            "boundary": 0,
+            "reward_at_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{2 \\alpha}{1 - 2 \\alpha} + 3\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                8,
+                11,
+                12,
+                13
+            ],
+            "selfish_mining_blocks": [
+                12,
+                13
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "2 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 4\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        }
+    ],
+    "(3A, 5H, A, 2H, 3A)": [
+        {
+            "committed_blocks": [
+                12,
+                13,
+                14
+            ],
+            "selfish_mining_blocks": [
+                12,
+                13,
+                14
+            ],
+            "initial_position": 2,
+            "boundary": 0,
+            "reward_at_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{2 \\alpha}{1 - 2 \\alpha} + 3\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                12,
+                13,
+                14
+            ],
+            "selfish_mining_blocks": [
+                12,
+                13,
+                14
+            ],
+            "recovered_blocks": [
+                1,
+                2,
+                3,
+                9
+            ],
+            "initial_position": 2,
+            "lower_boundary": 0,
+            "upper_boundary": 3,
+            "pr_lower_boundary": "\\frac{- \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}",
+            "pr_upper_boundary": "\\frac{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}",
+            "reward_at_lower_boundary": "\\left(1 - \\alpha\\right) \\left(2 + \\frac{\\frac{- \\frac{6 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}} + \\frac{6 \\left(1 - \\alpha\\right)^{5}}{\\alpha^{5}}}{1 - \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}} + \\frac{2 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{2 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{2 \\left(2 \\alpha - 1\\right) \\left(\\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} - \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}\\right)}\\right)",
+            "reward_at_upper_boundary": "7 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{15}{2} + \\frac{1 + \\frac{\\frac{6 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} - \\frac{6 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{2 \\left(1 - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}\\right) \\left(2 \\alpha - 1\\right)}\\right)",
+            "reward_at_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                9,
+                12,
+                13,
+                14
+            ],
+            "selfish_mining_blocks": [
+                13,
+                14
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "2 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 4\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                9,
+                12,
+                13,
+                14
+            ],
+            "selfish_mining_blocks": [
+                13,
+                14
+            ],
+            "recovered_blocks": [
+                1,
+                2,
+                3
+            ],
+            "initial_position": 1,
+            "lower_boundary": 0,
+            "upper_boundary": 2,
+            "pr_lower_boundary": "\\frac{- \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "pr_upper_boundary": "\\frac{-1 + \\frac{1 - \\alpha}{\\alpha}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "reward_at_lower_boundary": "2 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{7}{2} + \\frac{\\frac{- \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{4 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{1 - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{2 \\left(2 \\alpha - 1\\right) \\left(\\frac{1 - \\alpha}{\\alpha} - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}\\right)}\\right)",
+            "reward_at_upper_boundary": "7 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{15}{2} + \\frac{1 + \\frac{\\frac{4 \\left(1 - \\alpha\\right)}{\\alpha} - \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha}}{2 \\left(1 - \\frac{1 - \\alpha}{\\alpha}\\right) \\left(2 \\alpha - 1\\right)}\\right)",
+            "reward_at_boundary": ""
+        }
+    ],
+    "(2A, 3H, 3A, 5H, A, 2H, 3A)": [
+        {
+            "committed_blocks": [
+                17,
+                18,
+                19
+            ],
+            "selfish_mining_blocks": [
+                17,
+                18,
+                19
+            ],
+            "initial_position": 2,
+            "boundary": 0,
+            "reward_at_boundary": "\\left(1 - \\alpha\\right) \\left(\\frac{2 \\alpha}{1 - 2 \\alpha} + 3\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                17,
+                18,
+                19
+            ],
+            "selfish_mining_blocks": [
+                17,
+                18,
+                19
+            ],
+            "recovered_blocks": [
+                6,
+                7,
+                8,
+                14
+            ],
+            "initial_position": 2,
+            "lower_boundary": 0,
+            "upper_boundary": 3,
+            "pr_lower_boundary": "\\frac{- \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}",
+            "pr_upper_boundary": "\\frac{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}",
+            "reward_at_lower_boundary": "\\left(1 - \\alpha\\right) \\left(2 + \\frac{\\frac{- \\frac{6 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}} + \\frac{6 \\left(1 - \\alpha\\right)^{5}}{\\alpha^{5}}}{1 - \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}} + \\frac{2 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{2 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{2 \\left(2 \\alpha - 1\\right) \\left(\\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} - \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}\\right)}\\right)",
+            "reward_at_upper_boundary": "7 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{15}{2} + \\frac{1 + \\frac{\\frac{6 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} - \\frac{6 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{2 \\left(1 - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}\\right) \\left(2 \\alpha - 1\\right)}\\right)",
+            "reward_at_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                17,
+                18,
+                19
+            ],
+            "selfish_mining_blocks": [
+                17,
+                18,
+                19
+            ],
+            "recovered_blocks": [
+                1,
+                2,
+                6,
+                7,
+                8,
+                14
+            ],
+            "initial_position": 2,
+            "lower_boundary": 0,
+            "upper_boundary": 4,
+            "pr_lower_boundary": "\\frac{- \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{\\left(1 - \\alpha\\right)^{4}}{\\alpha^{4}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{4}}{\\alpha^{4}}}",
+            "pr_upper_boundary": "\\frac{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{4}}{\\alpha^{4}}}",
+            "reward_at_lower_boundary": "\\left(1 - \\alpha\\right) \\left(2 + \\frac{\\frac{- \\frac{8 \\left(1 - \\alpha\\right)^{4}}{\\alpha^{4}} + \\frac{8 \\left(1 - \\alpha\\right)^{6}}{\\alpha^{6}}}{1 - \\frac{\\left(1 - \\alpha\\right)^{4}}{\\alpha^{4}}} + \\frac{2 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{2 \\left(1 - \\alpha\\right)^{4}}{\\alpha^{4}}}{2 \\left(2 \\alpha - 1\\right) \\left(\\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} - \\frac{\\left(1 - \\alpha\\right)^{4}}{\\alpha^{4}}\\right)}\\right)",
+            "reward_at_upper_boundary": "10 \\alpha + \\left(1 - \\alpha\\right) \\left(10 + \\frac{2 + \\frac{\\frac{8 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} - \\frac{8 \\left(1 - \\alpha\\right)^{4}}{\\alpha^{4}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{4}}{\\alpha^{4}}} + \\frac{2 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{2 \\left(1 - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}\\right) \\left(2 \\alpha - 1\\right)}\\right)",
+            "reward_at_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                14,
+                17,
+                18,
+                19
+            ],
+            "selfish_mining_blocks": [
+                18,
+                19
+            ],
+            "initial_position": 1,
+            "boundary": 0,
+            "reward_at_boundary": "2 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{\\alpha}{1 - 2 \\alpha} + 4\\right)",
+            "pr_lower_boundary": "",
+            "pr_upper_boundary": "",
+            "reward_at_lower_boundary": "",
+            "reward_at_upper_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                14,
+                17,
+                18,
+                19
+            ],
+            "selfish_mining_blocks": [
+                18,
+                19
+            ],
+            "recovered_blocks": [
+                6,
+                7,
+                8
+            ],
+            "initial_position": 1,
+            "lower_boundary": 0,
+            "upper_boundary": 2,
+            "pr_lower_boundary": "\\frac{- \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "pr_upper_boundary": "\\frac{-1 + \\frac{1 - \\alpha}{\\alpha}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}",
+            "reward_at_lower_boundary": "2 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{7}{2} + \\frac{\\frac{- \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}} + \\frac{4 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{1 - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{2 \\left(2 \\alpha - 1\\right) \\left(\\frac{1 - \\alpha}{\\alpha} - \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}\\right)}\\right)",
+            "reward_at_upper_boundary": "7 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{15}{2} + \\frac{1 + \\frac{\\frac{4 \\left(1 - \\alpha\\right)}{\\alpha} - \\frac{4 \\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{2}}{\\alpha^{2}}} + \\frac{1 - \\alpha}{\\alpha}}{2 \\left(1 - \\frac{1 - \\alpha}{\\alpha}\\right) \\left(2 \\alpha - 1\\right)}\\right)",
+            "reward_at_boundary": ""
+        },
+        {
+            "committed_blocks": [
+                14,
+                17,
+                18,
+                19
+            ],
+            "selfish_mining_blocks": [
+                18,
+                19
+            ],
+            "recovered_blocks": [
+                1,
+                2,
+                6,
+                7,
+                8
+            ],
+            "initial_position": 1,
+            "lower_boundary": 0,
+            "upper_boundary": 3,
+            "pr_lower_boundary": "\\frac{- \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}",
+            "pr_upper_boundary": "\\frac{-1 + \\frac{1 - \\alpha}{\\alpha}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}",
+            "reward_at_lower_boundary": "2 \\alpha + \\left(1 - \\alpha\\right) \\left(\\frac{7}{2} + \\frac{\\frac{- \\frac{6 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}} + \\frac{6 \\left(1 - \\alpha\\right)^{4}}{\\alpha^{4}}}{1 - \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}} + \\frac{1 - \\alpha}{\\alpha} + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{2 \\left(2 \\alpha - 1\\right) \\left(\\frac{1 - \\alpha}{\\alpha} - \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}\\right)}\\right)",
+            "reward_at_upper_boundary": "10 \\alpha + \\left(1 - \\alpha\\right) \\left(10 + \\frac{2 + \\frac{\\frac{6 \\left(1 - \\alpha\\right)}{\\alpha} - \\frac{6 \\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}}{-1 + \\frac{\\left(1 - \\alpha\\right)^{3}}{\\alpha^{3}}} + \\frac{2 \\left(1 - \\alpha\\right)}{\\alpha}}{2 \\left(1 - \\frac{1 - \\alpha}{\\alpha}\\right) \\left(2 \\alpha - 1\\right)}\\right)",
+            "reward_at_boundary": ""
+        }
+    ]
+}

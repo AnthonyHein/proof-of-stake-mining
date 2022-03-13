@@ -1,4 +1,3 @@
-from numpy import isin
 import sympy as sp
 import sys
 from typing import Callable, Tuple, TypedDict
