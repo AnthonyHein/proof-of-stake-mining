@@ -43,6 +43,7 @@ def main():
                 "reward_at_boundary": sp.latex(commitment["reward_at_boundary"]) if "reward_at_boundary" in commitment else "",
                 "reward_at_lower_boundary": sp.latex(commitment["reward_at_lower_boundary"]) if "reward_at_lower_boundary" in commitment else "",
                 "reward_at_upper_boundary": sp.latex(commitment["reward_at_upper_boundary"]) if "reward_at_upper_boundary" in commitment else "",
+                "commitment_str": commitment_str(commitment),
             })
         all_commitments_serializable[str(state)] = commitments
 

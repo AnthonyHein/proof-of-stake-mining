@@ -39,4 +39,22 @@ to chase down.
 there is probably a better way to write it.
 
 - Not sure how to define deficits and runs other than using the code found in `get_deficits_and_runs()`.
-As the comment to this function suggests, 
+As the comment to this function suggests, this should be revisited.
+
+- If I were to rewrite this codebase, I would make several things to be their own modules, like bounds
+and commitments. Currently, they are typed dictionaries because I initially didn't see the point of
+making them their own class since they didn't have functions/methods that acted upon them but probably
+would be a cleaner solution nonetheless.
+
+- As far as I can tell, fine tuning in the explorer doesn't actually update any states. I don't think
+the function is _wrong_, but rather that there are just no states that benefit from a second pass. The
+root cause of this may be the fact that we aren't considering lower bounds that may come from state
+capitulations. For example, any state that ends in A, H where the A may not be published at the state
+may capitulate to B_{1,1} for a larger lower bound than the lower bound of 0 which would inevitably
+be used since there are no immediate actions or commitments.
+
+- In `state_details.py` may want to further divide `lemma_bounds` into LemmaLowerBound dictionaries and
+LemmaUpperBound dictionaries.
+
+- There are actually even smarter applications of Lemma G.8 if the suffix of the state is a known state.
+e.g. A, 2H, A, 2H, 2A

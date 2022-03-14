@@ -10,6 +10,7 @@ import sys
 import time
 
 from bound import *
+from commitment import *
 from settings.setting import Setting
 from state import State
 from state_details import StateDetails
@@ -36,9 +37,11 @@ template.globals.update({
     "ActionBound": ActionBound,
     "ActionLowerBound": ActionLowerBound,
     "ActionUpperBound": ActionUpperBound,
+    "CommitmentLowerBound": CommitmentLowerBound,
     "LemmaLowerBound": LemmaLowerBound,
     "LemmaUpperBound": LemmaUpperBound,
     "latex": sp.latex,
+    "commitment_str": commitment_str,
     "pretty_state_str": pretty_state_str,
 })
 
@@ -96,34 +99,53 @@ def _plot_state_details(settings: Setting, filename: str, state_details: StateDe
 
     xs = np.linspace(settings["alpha_pos_lower_bound"], settings["alpha_pos_upper_bound"], POINTS_SAMPLED)
 
-    bounds = state_details.get_bounds()
+    action_bounds = state_details.get_action_bounds()
 
-    for i in range(len(bounds)):
-        bound = bounds[i]
+    for i in range(len(action_bounds)):
+        bound = action_bounds[i]
 
-        if bound_isinstance(bound, ActionBound):
-            lower_bound_fn = sp.lambdify(alpha, bound["immediate_reward"] + bound["lower_bound"], 'numpy')
-            upper_bound_fn = sp.lambdify(alpha, bound["immediate_reward"] + bound["upper_bound"], 'numpy')
+        lower_bound_fn = sp.lambdify(alpha, bound["immediate_reward"] + bound["lower_bound"], 'numpy')
+        upper_bound_fn = sp.lambdify(alpha, bound["immediate_reward"] + bound["upper_bound"], 'numpy')
 
-            plt.plot(xs, [lower_bound_fn(x) for x in xs], color=BOOTSTRAP_SUCCESS)
-            plt.plot(xs, [upper_bound_fn(x) for x in xs], color=BOOTSTRAP_PRIMARY)
+        plt.plot(xs, [lower_bound_fn(x) for x in xs], color=BOOTSTRAP_SUCCESS)
+        plt.plot(xs, [upper_bound_fn(x) for x in xs], color=BOOTSTRAP_PRIMARY)
 
-        elif bound_isinstance(bound, LemmaLowerBound):
+        plt.tight_layout()
+        plt.savefig(PATH_TO_HTML_DIR + f"{filename}/{filename}-{hash(state_details.get_state())}-action-{i}.png", transparent=True)
+        n += 1
+        plt.clf()
+
+    commitment_bounds = state_details.get_commitment_bounds()
+    
+    for i in range(len(commitment_bounds)):
+        bound = commitment_bounds[i]
+
+        lower_bound_fn = sp.lambdify(alpha, bound["lower_bound"], 'numpy')
+
+        plt.plot(xs, [lower_bound_fn(x) for x in xs], color=BOOTSTRAP_SUCCESS)
+
+        plt.tight_layout()
+        plt.savefig(PATH_TO_HTML_DIR + f"{filename}/{filename}-{hash(state_details.get_state())}-commitment-{i}.png", transparent=True)
+        n += 1
+        plt.clf()
+
+    lemma_bounds = state_details.get_lemma_bounds()
+    
+    for i in range(len(lemma_bounds)):
+        bound = lemma_bounds[i]
+
+        if bound_isinstance(bound, LemmaLowerBound):
             lower_bound_fn = sp.lambdify(alpha, bound["lower_bound"], 'numpy')
 
             plt.plot(xs, [lower_bound_fn(x) for x in xs], color=BOOTSTRAP_SUCCESS)
 
-        elif bound_isinstance(bound, LemmaUpperBound):
+        else: # bound_isinstance(bound, LemmaUpperBound):
             upper_bound_fn = sp.lambdify(alpha, bound["upper_bound"], 'numpy')
 
             plt.plot(xs, [upper_bound_fn(x) for x in xs], color=BOOTSTRAP_PRIMARY)
 
-        else:
-            print(f"saver._plot_state_details: bound {bound} is not one of `ActionBound`, `LemmaLowerBound`, or `LemmaUpperBound`")
-            sys.exit(1)
-
         plt.tight_layout()
-        plt.savefig(PATH_TO_HTML_DIR + f"{filename}/{filename}-{hash(state_details.get_state())}-{i}.png", transparent=True)
+        plt.savefig(PATH_TO_HTML_DIR + f"{filename}/{filename}-{hash(state_details.get_state())}-lemma-{i}.png", transparent=True)
         n += 1
         plt.clf()
 

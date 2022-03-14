@@ -4,6 +4,7 @@ import sys
 from typing import List, Union
 
 from bound import *
+from commitment import *
 from lemmas.lemma_g8 import LemmaG8
 from known_states import known_states
 from lemmas import lemmas
@@ -24,8 +25,10 @@ class StateDetails:
         Initialize an object that will store a detailed view of `state`.
         """
         self.state: State = state
-        self.bounds: List[Union[ActionBound, LemmaLowerBound, LemmaUpperBound]] = []
-        self.best_lower_bound: Union[ActionLowerBound, LemmaLowerBound] = None
+        self.action_bounds: List[ActionBound] = []
+        self.commitment_bounds: List[CommitmentLowerBound] = []
+        self.lemma_bounds: List[Union[LemmaLowerBound, LemmaUpperBound]] = []
+        self.best_lower_bound: Union[ActionLowerBound, CommitmentLowerBound, LemmaLowerBound] = None
         self.best_upper_bound: Union[ActionUpperBound, LemmaUpperBound] = None
 
         self._fill(settings, lut)
@@ -45,7 +48,7 @@ class StateDetails:
                 "lemma": "Known State",
                 "upper_bound": known_states[self.state]["upper_bound"],
             }
-            self.bounds = [best_lower_bound, best_upper_bound]
+            self.lemma_bounds = [best_lower_bound, best_upper_bound]
             self.best_lower_bound = best_lower_bound
             self.best_upper_bound = best_upper_bound
             return
@@ -63,7 +66,7 @@ class StateDetails:
                     subsequent_state = subsequent_state.next_state_from_capitulation(checkpoints[-1])
 
                 if subsequent_state == State():
-                    self.bounds.append({
+                    self.action_bounds.append({
                         "action": action,
                         "immediate_reward": immediate_reward,
                         "subsequent_state": subsequent_state,
@@ -92,7 +95,7 @@ class StateDetails:
                     next_state_h_lower_bound_expr = (next_state_h_lower_bound["immediate_reward"] if bound_isinstance(next_state_h_lower_bound, ActionLowerBound) else sp.Integer(0)) + next_state_h_lower_bound["lower_bound"]
                     next_state_h_upper_bound_expr = (next_state_h_upper_bound["immediate_reward"] if bound_isinstance(next_state_h_upper_bound, ActionUpperBound) else sp.Integer(0)) + next_state_h_upper_bound["upper_bound"]
 
-                    self.bounds.append({
+                    self.action_bounds.append({
                         "action": action,
                         "immediate_reward": immediate_reward,
                         "subsequent_state": subsequent_state,
@@ -100,13 +103,26 @@ class StateDetails:
                         "upper_bound": alpha * next_state_a_upper_bound_expr + (1 - alpha) * (next_state_h_upper_bound_expr - alpha),
                     })
 
+        # Commitment Lower Bounds:
+        for commitment in get_available_commitments(self.state):
+            if commitment_isinstance(commitment, OneBoundaryCommitment):
+                self.commitment_bounds.append({
+                    "commitment": commitment,
+                    "lower_bound": commitment["reward_at_boundary"],
+                })
+            else: # commitment_isinstance(commitment, TwoBoundaryCommitment):
+                self.commitment_bounds.append({
+                    "commitment": commitment,
+                    "lower_bound": commitment["pr_lower_boundary"] * commitment["reward_at_lower_boundary"] + commitment["pr_upper_boundary"] * commitment["reward_at_upper_boundary"],
+                })
+
         # Lemma Lower Bounds:
         for lemma in lemmas:
 
             lower_bound = lemma.lower_bound(settings, self.state)
 
             if lower_bound is not None:
-                self.bounds.append(lower_bound)
+                self.lemma_bounds.append(lower_bound)
 
         # Lemma Upper Bounds
         for lemma in lemmas:
@@ -114,7 +130,7 @@ class StateDetails:
             upper_bound = lemma.upper_bound(settings, self.state)
 
             if upper_bound is not None:
-                self.bounds.append(upper_bound)
+                self.lemma_bounds.append(upper_bound)
 
         self.best_lower_bound: ActionLowerBound = {
             "action": "Capitulate",
@@ -123,7 +139,7 @@ class StateDetails:
             "lower_bound": sp.Integer(0),
         }
 
-        if len(list(filter(lambda x: bound_isinstance(x, ActionBound), self.bounds))) == 0:
+        if len(self.action_bounds) == 0:
             self.best_upper_bound: LemmaUpperBound = LemmaG8.upper_bound(settings, self.state)
         else:
             self.best_upper_bound: ActionUpperBound = {
@@ -133,7 +149,7 @@ class StateDetails:
                 "upper_bound": sp.Integer(0),
             }
 
-        for bound in filter(lambda x: bound_isinstance(x, ActionBound), self.bounds):
+        for bound in self.action_bounds:
 
             if self._bound_less_than(settings, self.best_lower_bound, bound, lower_bound=True):
                 self.best_lower_bound = {
@@ -151,12 +167,17 @@ class StateDetails:
                     "upper_bound": bound["upper_bound"],
                 }
 
-        for bound in filter(lambda x: bound_isinstance(x, LemmaLowerBound), self.bounds):
+        for bound in self.commitment_bounds:
+
+            if self._bound_less_than(settings, self.best_lower_bound, bound, lower_bound=True):
+                self.best_lower_bound = bound         
+
+        for bound in filter(lambda x: bound_isinstance(x, LemmaLowerBound), self.lemma_bounds):
 
             if self._bound_less_than(settings, self.best_lower_bound, bound, lower_bound=True):
                 self.best_lower_bound = bound
 
-        for bound in filter(lambda x: bound_isinstance(x, LemmaUpperBound), self.bounds):
+        for bound in filter(lambda x: bound_isinstance(x, LemmaUpperBound), self.lemma_bounds):
 
             if self._bound_less_than(settings, bound, self.best_upper_bound, lower_bound=False):
                 self.best_upper_bound = bound
@@ -215,13 +236,25 @@ class StateDetails:
         """
         return self.state
 
-    def get_bounds(self) -> List[Union[ActionBound, LemmaUpperBound]]:
+    def get_action_bounds(self) -> List[ActionBound]:
         """
-        Return the `bounds` for this state.
+        Return the `action_bounds` for this state.
         """
-        return self.bounds
+        return self.action_bounds
+
+    def get_commitment_bounds(self) -> List[CommitmentLowerBound]:
+        """
+        Return the `commitment_bounds` for this state.
+        """
+        return self.commitment_bounds
+
+    def get_lemma_bounds(self) -> List[Union[LemmaLowerBound, LemmaUpperBound]]:
+        """
+        Return the `lemma_bounds` for this state.
+        """
+        return self.lemma_bounds
     
-    def get_best_lower_bound(self) -> ActionLowerBound:
+    def get_best_lower_bound(self) -> Union[ActionLowerBound, CommitmentLowerBound, LemmaLowerBound]:
         """
         Return the `best_lower_bound` for this state.
         """
@@ -238,7 +271,9 @@ class StateDetails:
         Return `True` if two state details are equal and false otherwise.
         """
         return self.state == other.state and \
-               self.bounds == other.bounds and \
+               self.action_bounds == other.action_bounds and \
+               self.commitment_bounds == other.commitment_bounds and \
+               self.lemma_bounds == other.lemma_bounds and \
                self.best_lower_bound == other.best_lower_bound and \
                self.best_upper_bound == other.best_upper_bound
 
@@ -253,29 +288,26 @@ class StateDetails:
 
         s += "\n"
 
-        s += "Action/Lemma, Immediate Reward, Subsequent State, Lower Bound, Upper Bound\n"
-        for bound in self.bounds:
+        s += "Action/Lemma/Commitment, Immediate Reward, Subsequent State, Lower Bound, Upper Bound\n"
+        for bound in self.action_bounds:
+            s += str(bound["action"]) + ", "
+            s += sp.latex(bound["immediate_reward"]) + ", "
+            s += str(bound["subsequent_state"]) + ", "
+            s += sp.latex(bound["lower_bound"]) + ", "
+            s += sp.latex(bound["upper_bound"]) + "\n"
 
-            if bound_isinstance(bound, ActionBound):
-                s += str(bound["action"]) + ", "
-                s += sp.latex(bound["immediate_reward"]) + ", "
-                s += str(bound["subsequent_state"]) + ", "
-                s += sp.latex(bound["lower_bound"]) + ", "
-                s += sp.latex(bound["upper_bound"])
+        for bound in self.commitment_bounds:
+            s += commitment_str(bound["commitment"]) + ",,,"
+            s += bound["lower_bound"] + ",\n"
 
-            elif bound_isinstance(bound, LemmaLowerBound):
+        for bound in self.lemma_bounds:
+            if bound_isinstance(bound, LemmaLowerBound):
                 s += str(bound["lemma"]) + ",,,"
-                s += sp.latex(bound["lower_bound"]) + ","
+                s += sp.latex(bound["lower_bound"]) + ",\n"
 
             elif bound_isinstance(bound, LemmaUpperBound):
                 s += str(bound["lemma"]) + ",,,,"
-                s += sp.latex(bound["upper_bound"])
-
-            else:
-                print(f"state_details.__str__: bound {bound} is not one of `ActionBound`, `LemmaLowerBound`, or `LemmaUpperBound`")
-                sys.exit(1)
-
-            s += "\n"
+                s += sp.latex(bound["upper_bound"]) + "\n"
         
         s += "\n"
 
@@ -285,6 +317,9 @@ class StateDetails:
             s += sp.latex(self.best_lower_bound["immediate_reward"]) + ", "
             s += str(self.best_lower_bound["subsequent_state"]) + ", "
             s += sp.latex(self.best_lower_bound["lower_bound"])
+        elif bound_isinstance(CommitmentLowerBound):
+            s += commitment_str(self.best_lower_bound["commitment"]) + ",,,"
+            s += self.best_lower_bound["lower_bound"] + ",\n"
         elif bound_isinstance(self.best_lower_bound, LemmaLowerBound):
             s += str(self.best_lower_bound["lemma"]) + ", "
             s += sp.latex(self.best_lower_bound["lower_bound"])

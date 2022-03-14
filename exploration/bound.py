@@ -1,7 +1,8 @@
 import sympy as sp
 import sys
-from typing import Callable, Tuple, TypedDict
+from typing import Callable, Tuple, TypedDict, Union
 
+from commitment import *
 from state import State
 
 class ActionBound(TypedDict):
@@ -23,6 +24,10 @@ class ActionUpperBound(TypedDict):
     subsequent_state: State
     upper_bound: sp.core.Expr
 
+class CommitmentLowerBound(TypedDict):
+    commitment: Union[OneBoundaryCommitment, TwoBoundaryCommitment]
+    lower_bound: sp.core.Expr
+
 class LemmaLowerBound(TypedDict):
     lemma: str
     lower_bound: sp.core.Expr
@@ -32,6 +37,11 @@ class LemmaUpperBound(TypedDict):
     upper_bound: sp.core.Expr
 
 def bound_isinstance(x: object, cls: Callable[[], None]) -> bool:
+    """
+    Check if object `x` is an instance of class `cls`. Where `cls` is one of
+    `ActionBound`, `ActionLowerBound`, `ActionUpperBound`, `CommitmentLowerBound`,
+    `LemmaLowerBound`, or `LemmaUpperBound`.
+    """
     keys = set()
 
     if cls == ActionBound:
@@ -42,6 +52,9 @@ def bound_isinstance(x: object, cls: Callable[[], None]) -> bool:
 
     elif cls == ActionUpperBound:
         keys = set(["action", "immediate_reward", "subsequent_state", "upper_bound"])
+
+    elif cls == CommitmentLowerBound:
+        keys = set(["commitment", "lower_bound"])
 
     elif cls == LemmaLowerBound:
         keys = set(["lemma", "lower_bound"])

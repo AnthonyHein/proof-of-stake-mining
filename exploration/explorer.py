@@ -47,7 +47,7 @@ class Explorer:
 
         if not self.settings["display_uninteresting_states"]:
             for state, state_details in self.lut.items():
-                if sum([bound_isinstance(bound, ActionBound) for bound in state_details.get_bounds()]) <= 1: # only wait
+                if len(state_details.get_action_bounds()) + len(state_details.get_commitment_bounds()) <= 1: # only wait
                     uninteresting_states.append(state)
 
         for state in uninteresting_states:

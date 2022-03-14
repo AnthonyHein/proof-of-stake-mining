@@ -1,6 +1,6 @@
 import sympy as sp
 import sys
-from typing import Callable, List, TypedDict
+from typing import Callable, List, TypedDict, Union
 
 # At the moment, the only commitments we consider are selfish mining commitments
 # with at least one boundary at zero and an initial position equal to the number
@@ -31,7 +31,24 @@ class TwoBoundaryCommitment(TypedDict):
     reward_at_lower_boundary: sp.core.Expr
     reward_at_upper_boundary: sp.core.Expr
 
+def commitment_str(commitment: Union[OneBoundaryCommitment, TwoBoundaryCommitment]) -> str:
+    """
+    Return a string representation of a commitment.
+    """
+    s = ""
+
+    s += f"committed {commitment['committed_blocks']} and will selfish mine on {commitment['selfish_mining_blocks']}"
+
+    if commitment_isinstance(commitment, TwoBoundaryCommitment):
+        s += f" unless recovers {commitment['recovered_blocks']}"
+
+    return s
+
 def commitment_isinstance(x: object, cls: Callable[[], None]) -> bool:
+    """
+    Check if object `x` is an instance of class `cls`. Where `cls` is one of
+    `OneBoundaryCommitment` or `TwoBoundaryCommitment`.
+    """
     keys = set()
 
     if cls == OneBoundaryCommitment:
