@@ -13,6 +13,10 @@ from bound import *
 from settings.setting import Setting
 from state import State
 from state_details import StateDetails
+from state_utils import pretty_state_str
+
+BOOTSTRAP_PRIMARY = "#007bff"
+BOOTSTRAP_SUCCESS = "#28a745"
 
 PATH_TO_OBJ_DIR = "temp/obj/"
 PATH_TO_HTML_DIR = "temp/html/"
@@ -35,6 +39,7 @@ template.globals.update({
     "LemmaLowerBound": LemmaLowerBound,
     "LemmaUpperBound": LemmaUpperBound,
     "latex": sp.latex,
+    "pretty_state_str": pretty_state_str,
 })
 
 def save(settings: Setting, lut: dict[State, StateDetails]) -> None:
@@ -100,18 +105,18 @@ def _plot_state_details(settings: Setting, filename: str, state_details: StateDe
             lower_bound_fn = sp.lambdify(alpha, bound["immediate_reward"] + bound["lower_bound"], 'numpy')
             upper_bound_fn = sp.lambdify(alpha, bound["immediate_reward"] + bound["upper_bound"], 'numpy')
 
-            plt.plot(xs, [lower_bound_fn(x) for x in xs], color="green")
-            plt.plot(xs, [upper_bound_fn(x) for x in xs], color="blue")
+            plt.plot(xs, [lower_bound_fn(x) for x in xs], color=BOOTSTRAP_SUCCESS)
+            plt.plot(xs, [upper_bound_fn(x) for x in xs], color=BOOTSTRAP_PRIMARY)
 
         elif bound_isinstance(bound, LemmaLowerBound):
             lower_bound_fn = sp.lambdify(alpha, bound["lower_bound"], 'numpy')
 
-            plt.plot(xs, [lower_bound_fn(x) for x in xs], color="green")
+            plt.plot(xs, [lower_bound_fn(x) for x in xs], color=BOOTSTRAP_SUCCESS)
 
         elif bound_isinstance(bound, LemmaUpperBound):
             upper_bound_fn = sp.lambdify(alpha, bound["upper_bound"], 'numpy')
 
-            plt.plot(xs, [upper_bound_fn(x) for x in xs], color="blue")
+            plt.plot(xs, [upper_bound_fn(x) for x in xs], color=BOOTSTRAP_PRIMARY)
 
         else:
             print(f"saver._plot_state_details: bound {bound} is not one of `ActionBound`, `LemmaLowerBound`, or `LemmaUpperBound`")
@@ -125,20 +130,20 @@ def _plot_state_details(settings: Setting, filename: str, state_details: StateDe
     lower_bound_fn = sp.lambdify(alpha, (state_details.get_best_lower_bound()["immediate_reward"] if bound_isinstance(state_details.get_best_lower_bound(), ActionLowerBound) else sp.Integer(0)) + state_details.get_best_lower_bound()["lower_bound"], 'numpy')
     upper_bound_fn = sp.lambdify(alpha, (state_details.get_best_upper_bound()["immediate_reward"] if bound_isinstance(state_details.get_best_upper_bound(), ActionUpperBound) else sp.Integer(0)) + state_details.get_best_upper_bound()["upper_bound"], 'numpy')
 
-    plt.plot(xs, [lower_bound_fn(x) for x in xs], color="green")
+    plt.plot(xs, [lower_bound_fn(x) for x in xs], color=BOOTSTRAP_SUCCESS)
     plt.tight_layout()
     plt.savefig(PATH_TO_HTML_DIR + f"{filename}/{filename}-{hash(state_details.get_state())}-best-lower-bound.png", transparent=True)
     n += 1
     plt.clf()
 
-    plt.plot(xs, [upper_bound_fn(x) for x in xs], color="blue")
+    plt.plot(xs, [upper_bound_fn(x) for x in xs], color=BOOTSTRAP_PRIMARY)
     plt.tight_layout()
     plt.savefig(PATH_TO_HTML_DIR + f"{filename}/{filename}-{hash(state_details.get_state())}-best-upper-bound.png", transparent=True)
     n += 1
     plt.clf()
 
-    plt.plot(xs, [lower_bound_fn(x) for x in xs], color="green")
-    plt.plot(xs, [upper_bound_fn(x) for x in xs], color="blue")
+    plt.plot(xs, [lower_bound_fn(x) for x in xs], color=BOOTSTRAP_SUCCESS)
+    plt.plot(xs, [upper_bound_fn(x) for x in xs], color=BOOTSTRAP_PRIMARY)
     plt.tight_layout()
     plt.savefig(PATH_TO_HTML_DIR + f"{filename}/{filename}-{hash(state_details.get_state())}-best-bounds.png", transparent=True)
     n += 1

@@ -47,6 +47,13 @@
         <div class="col-md-12">
           <h1>Exploration</h1>
 
+          <ul>
+            <li><span>BLACK</span> denotes a block in the longest path.</li>
+            <li><span class="text-primary">BLUE</span> denotes a hidden block.</li>
+            <li><span class="text-danger">RED</span> denotes an orphaned block.</li>
+            <li>A state where all attacker blocks are blue is a typical state where the attacker has not published anything yet.</li>
+          </ul>
+
           {% for state in lut: %}
           {% set state_details = lut[state] %}
 
@@ -64,26 +71,18 @@
           {% endif %}
 
             {% if loop.index % 5 == 0: %}
-            <h2 class="card-header bg-primary text-white">
-              {{ state_details.get_state() }}
-            </h2>
+            <h2 class="card-header bg-primary">
             {% elif loop.index % 5 == 1: %}
-            <h2 class="card-header bg-success text-white">
-              {{ state_details.get_state() }}
-            </h2>
+            <h2 class="card-header bg-success">
             {% elif loop.index % 5 == 2: %}
-            <h2 class="card-header bg-danger text-white">
-              {{ state_details.get_state() }}
-            </h2>
+            <h2 class="card-header bg-danger">
             {% elif loop.index % 5 == 3: %}
-            <h2 class="card-header bg-warning text-dark">
-              {{ state_details.get_state() }}
-            </h2>
+            <h2 class="card-header bg-warning">
             {% else: %}
-            <h2 class="card-header bg-info text-white">
-              {{ state_details.get_state() }}
-            </h2>
+            <h2 class="card-header bg-info">
             {% endif %}
+              <span class="bg-light">{{ pretty_state_str(state_details.get_state())|safe }}</span>
+            </h2>
 
 
             <div class="card-body">
@@ -109,7 +108,7 @@
                   {% if bound_isinstance(bound, ActionBound): %}
                   <td>{{ "Wait" if bound["action"][0] == 0 else bound["action"] }}</td>
                   <td>${{ latex(bound["immediate_reward"]) }}$</td>
-                  <td>{{ bound["subsequent_state"] }}</td>
+                  <td>{{ pretty_state_str(bound["subsequent_state"])|safe }}</td>
                   <td>${{ latex(bound["lower_bound"]) }}$</td>
                   <td>${{ latex(bound["upper_bound"]) }}$</td>
                   <td>
@@ -171,7 +170,7 @@
                   {% if bound_isinstance(bound, ActionLowerBound): %}
                   <td>{{ "Wait" if bound["action"][0] == 0 else bound["action"] }}</td>
                   <td>${{ latex(bound["immediate_reward"]) }}$</td>
-                  <td>{{ bound["subsequent_state"] }}</td>
+                  <td>{{ pretty_state_str(bound["subsequent_state"])|safe }}</td>
                   <td>${{ latex(bound["lower_bound"]) }}$</td>
                   <td></td>
                   <td>
@@ -219,7 +218,7 @@
                   {% if bound_isinstance(bound, ActionUpperBound): %}
                   <td>{{ "Wait" if bound["action"][0] == 0 else bound["action"] }}</td>
                   <td>${{ latex(bound["immediate_reward"]) }}$</td>
-                  <td>{{ bound["subsequent_state"] }}</td>
+                  <td>{{ pretty_state_str(bound["subsequent_state"])|safe }}</td>
                   <td></td>
                   <td>${{ latex(bound["upper_bound"]) }}$</td>
                   <td>
@@ -258,25 +257,17 @@
 
             {% if loop.index % 5 == 0: %}
             <div class="card-footer bg-primary text-white">
-              {{ hash(state_details.get_state()) }}
-            </div>
             {% elif loop.index % 5 == 1: %}
             <div class="card-footer bg-success text-white">
-              {{ hash(state_details.get_state()) }}
-            </div>
             {% elif loop.index % 5 == 2: %}
             <div class="card-footer bg-danger text-white">
-              {{ hash(state_details.get_state()) }}
-            </div>
             {% elif loop.index % 5 == 3: %}
             <div class="card-footer bg-warning text-dark">
-              {{ hash(state_details.get_state()) }}
-            </div>
             {% else: %}
             <div class="card-footer bg-info text-white">
+            {% endif %}
               {{ hash(state_details.get_state()) }}
             </div>
-            {% endif %}
 
           </div>
 

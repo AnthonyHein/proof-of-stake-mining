@@ -7,6 +7,10 @@ from random_walk_utils import *
 from state import State
 from symbols import *
 
+BOOTSTRAP_DARK = "#212529"
+BOOTSTRAP_PRIMARY = "#007bff"
+BOOTSTRAP_DANGER = "#dc3545"
+
 def get_checkpoints(state: State) -> List[int]:
     """
     Get a list of all checkpoints in state `state`.
@@ -411,6 +415,57 @@ def _get_available_commitments_fixed_committed_blocks(state: State,
             })
 
     return commitments
+
+def pretty_state_str(state: State) -> str:
+    """
+    Get a prettier version of the string for state `state` that is color coded.
+    """
+    sequence = state.get_sequence()
+    longest_path = state.get_longest_path()
+    unpublished_blocks = state.get_unpublished_blocks()
+
+    if len(sequence) == 0:
+        return "genesis"
+    
+    pretty_lst = []
+
+    for i in range(1, len(sequence) + 1):
+        if i in longest_path:
+            pretty_lst.append(f"<span style=\"color: {BOOTSTRAP_DARK}\">{sequence[i - 1]}</span>")
+        elif i in unpublished_blocks:
+            pretty_lst.append(f"<span style=\"color: {BOOTSTRAP_PRIMARY}\">{sequence[i - 1]}</span>")
+        else:
+            pretty_lst.append(f"<span style=\"color: {BOOTSTRAP_DANGER}\">{sequence[i - 1]}</span>")
+
+    pretty_str = ""
+
+    curr_block_type: str = None
+    curr_color: str = None
+    run = 0
+
+    for block in pretty_lst:
+
+        if curr_block_type is not None and block == curr_block_type:
+            run += 1
+        else:
+            if curr_block_type is not None:
+                if run != 1:
+                    pretty_str += f"<span style=\"color: {curr_color}\">{run}</span>{curr_block_type}, "
+                else:
+                    pretty_str += f"{curr_block_type}, "
+            curr_block_type = block
+            curr_color = curr_block_type[curr_block_type.find(":") + 2 : curr_block_type.rfind("\"")]
+            run = 1
+
+    if curr_block_type is not None:
+        if run != 1:
+            pretty_str += f"<span style=\"color: {curr_color}\">{run}</span>{curr_block_type}, "
+        else:
+            pretty_str += f"{curr_block_type}, " 
+
+    pretty_str = f"({pretty_str.rstrip(', ')})"
+
+    return pretty_str
 
 def main():
 
