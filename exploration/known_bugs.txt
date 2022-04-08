@@ -58,3 +58,15 @@ LemmaUpperBound dictionaries.
 
 - There are actually even smarter applications of Lemma G.8 if the suffix of the state is a known state.
 e.g. A, 2H, A, 2H, 2A
+
+- Try to cut out actions that cannot be optimal (or at least use color to mark).
+
+- Two modifications to Lemma G.8
+* Modification 1: In recursive part of G.8 look at previously created tables.
+* Modification 2: Implement a smarter search for G.8 partitions. In particular, look for states like
+  (A,xH,2A) and (A,xH,A,H,A).
+
+- Make Sphinx documentation.
+
+- Double check definitions of elevated, patient, and non-checkpoint finality. In particular, I think
+the min Q = v + 1 might be wrong.

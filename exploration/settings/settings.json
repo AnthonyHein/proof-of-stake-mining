@@ -1,7 +1,7 @@
 {
     "alpha_pos_lower_bound": 0.3152,
     "alpha_pos_upper_bound": 0.3235,
-    "exploration_depth": 10,
+    "exploration_depth": 11,
     "continue_from_known_states": false,
     "display_uninteresting_states": false,
     "display_known_states": false,
