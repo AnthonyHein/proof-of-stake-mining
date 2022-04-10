@@ -1,4 +1,3 @@
-# proof-of-stake-mining
-Contains work done to understand an alternative proof-of-stake (PoS) cryptocurrency mining protocol in a stylized model of Bitcoin as part of independent work for Princeton University.
+See [thesis.anthonyhein.com](https://thesis.anthonyhein.com).
 
-This extends work done by Ferreira and Weinberg found [here](https://arxiv.org/pdf/2107.04069.pdf).
+Documentation [here](https://thesis.anthonyhein.com/error.html).
